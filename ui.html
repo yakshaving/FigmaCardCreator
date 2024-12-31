@@ -1,299 +1,554 @@
-<html>
-  <body>
-    <div id="root">
-      <div class="form-group">
-        <label for="componentSelect">Card Component</label>
-        <div class="select-wrapper">
-          <select id="componentSelect">
-            <option value="">Loading components...</option>
-          </select>
-        </div>
-      </div>
+<div id="root">
+  <div class="tabs">
+    <div class="tab active" data-step="1">
+      <span>1</span> Select Component</div>
+    <div class="tab" data-step="2">
+      <span>2</span> Add Data</div>
+    <div class="tab" data-step="3">
+      <span>3</span> Map Fields</div>
+  </div>
 
-      <div class="form-group">
-        <label for="jsonData">Location Data</label>
-        <div class="textarea-wrapper">
-          <textarea 
-            id="jsonData" 
-            rows="20" 
-            spellcheck="false"
-            placeholder="Paste your locations JSON here..."
-          ></textarea>
-        </div>
-      </div>
-
-      <button id="submit" class="primary-button">Generate Cards</button>
+  <div class="content">
+    <!-- Step 1: Component Selection -->
+    <div class="step-content active" data-step="1">
+      <h2>Select a Component</h2>
+      <p class="description">For best results, select a component with text fields and other elements for data population</p>
       
-      <div id="status" class="status-message hidden"></div>
+      <div class="instruction-panel" id="selectInstructions">
+        <div class="instruction-text">Nothing Selected Yet</div>
+      </div>
+      
+      <div id="componentDetails" class="component-details-panel hidden">
+        <div class="selected-component">
+          <div class="component-info">
+            <svg class="component-icon" width="40" height="40" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" fill="white" fill-opacity="0.01"/>
+              <path d="M17 12L24 5L31 12L24 19L17 12Z" fill="#EDE5FA" stroke="#cbaaf9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M17 36L24 29L31 36L24 43L17 36Z" fill="#EDE5FA" stroke="#cbaaf9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M29 24L36 17L43 24L36 31L29 24Z" fill="#EDE5FA" stroke="#cbaaf9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 24L12 17L19 24L12 31L5 24Z" fill="#EDE5FA" stroke="#cbaaf9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="component-details">
+              <span class="component-name"></span>
+              <span class="variant-count"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="component-structure">
+          <h3>Component Structure</h3>
+          <table class="data-fields">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+
+          <div class="json-preview">
+            <h3>JSON Structure</h3>
+            <pre><code id="jsonStructure"></code></pre>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-      // Add image resizing function to UI context
-      async function resizeImage(url, maxSize = 2048) {
-        try {
-          // Fetch the image
-          const response = await fetch(url);
-          const blob = await response.blob();
+    <!-- Step 2: Data Input -->
+    <div class="step-content" data-step="2">
+      <h2>Add Your Data</h2>
+      <p class="description">Paste your JSON data for the cards</p>
 
-          // Create an image element
-          const img = new Image();
+      <div class="json-section">
+        <div class="json-header">
+          <span>JSON Structure</span>
+          <button id="copyTemplate" class="text-button">Copy Template</button>
+        </div>
+        <textarea 
+          id="jsonData" 
+          spellcheck="false"
+          placeholder="Paste your locations JSON here..."
+        ></textarea>
+      </div>
+    </div>
 
-          // Convert blob to data URL
-          const reader = new FileReader();
-          const dataUrl = await new Promise((resolve) => {
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
+    <!-- Step 3: Field Mapping -->
+    <div class="step-content" data-step="3">
+      <h2>Map Fields</h2>
+      <p class="description">Connect your data to component elements</p>
+      <div id="fieldMappings"></div>
+    </div>
+  </div>
 
-          // Load the image
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = dataUrl;
-          });
+  <div class="footer">
+    <button id="prevStep" class="button secondary">Previous</button>
+    <button id="nextStep" class="button primary">Next</button>
+  </div>
+</div>
 
-          // Create a canvas to resize the image
-          const canvas = document.createElement("canvas");
-          let width = img.width;
-          let height = img.height;
+<style>
+  :root {
+    --figma-color-text: #292929;
+    --figma-color-bg: #FFFFFF;
+    --figma-color-border: #CCCCCC;
+    --figma-color-text-secondary: #d5d9f4;
+    --figma-color-bg-secondary: #F0F0F0;
+    --figma-color-bg-brand-tertiary: #fffff7;
+    --figma-color-border-brand: #f7f5ec;
+    --figma-color-bg-tertiary: #1c1e3f;
+    --figma-color-text-brand: #e4e4d1;
+  }
 
-          // Calculate new dimensions while maintaining aspect ratio
-          if (width > maxSize || height > maxSize) {
-            if (width > height) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            } else {
-              width = (width * maxSize) / height;
-              height = maxSize;
-            }
-          }
+  body {
+    margin: 0;
+    height: 100vh;
+    font-family: 'SF Pro Display', sans-serif;
+    color: var(--figma-color-text);
+    background: var(--figma-color-bg);
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+  }
 
-          canvas.width = width;
-          canvas.height = height;
+  #root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+  }
 
-          // Draw and get the resized image data
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
-          const resizedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--figma-color-border);
+    padding: 10px 16px 4px;
+    background: var(--figma-color-bg);
+  }
 
-          // Convert data URL to Uint8Array
-          const base64 = resizedDataUrl.split(",")[1];
-          const binaryString = atob(base64);
-          const uint8Array = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            uint8Array[i] = binaryString.charCodeAt(i);
-          }
+  .tab {
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--figma-color-text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px;
+    margin-right: 10px;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
-          return Array.from(uint8Array);
-        } catch (err) {
-          console.error("Error resizing image:", err);
-          throw err;
-        }
-      }
+  .tab span {
+    font-weight: 600;
+    font-size: 12px;
+    background-color: var(--figma-color-bg-brand-tertiary);
+    color: var(--figma-color-text-brand);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--figma-color-text);
+  }
 
-      // Listen for resize requests from the plugin
-      onmessage = async (event) => {
-        const msg = event.data.pluginMessage;
+  .tab.active {
+    color: var(--figma-color-text-brand);
+    background-color: var(--figma-color-bg-tertiary);
+    font-weight: 600;
+    span{
+      background-color: var(--figma-color-bg-tertiary);
+      color: var(--figma-color-text-secondary);
+    }
+  }
 
-        if (msg.type === "resize-image") {
-          try {
-            const resizedData = await resizeImage(msg.url);
-            parent.postMessage(
-              {
-                pluginMessage: {
-                  type: "resized-image",
-                  data: resizedData,
-                },
-              },
-              "*"
-            );
-          } catch (err) {
-            console.error("Error in UI resizing image:", err);
-            parent.postMessage(
-              {
-                pluginMessage: {
-                  type: "error",
-                  message: "Failed to resize image: " + err.message,
-                },
-              },
-              "*"
-            );
-          }
-        }
+  .instruction-text {
+    font-size: 16px;
+    background-color: rgba(117, 117, 225, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+    color: rgb(78, 29, 78);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    text-align: center;
+  }
+ 
+  .content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+  }
 
-        if (msg.type === 'components-list') {
-          const select = document.getElementById('componentSelect');
-          if (msg.components && msg.components.length > 0) {
-            select.innerHTML = msg.components.map(c => 
-              `<option value="${c.key}">${c.name}</option>`
-            ).join('');
-          } else {
-            select.innerHTML = '<option value="">No card components found</option>';
-            showError(
-              "No card components found in the current page. Please ensure you have:" +
-              "<ul>" +
-              "<li>A component or component set in the current page</li>" +
-              "<li>The component has a text layer named exactly 'Name'</li>" +
-              "</ul>"
-            );
-          }
-        }
+  .step-content {
+    display: none;
+  }
+
+  .step-content.active {
+    display: block;
+  }
+
+  h2 {
+    margin: 0 0 3px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .description {
+    margin: 0 0 24px;
+    font-size: 14px;
+    color: #707070;
+  }
+ 
+
+  .selected-component {
+    background: var(--figma-color-bg-brand-tertiary);
+    border: 1px solid var(--figma-color-border-brand);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 16px;
+  }
+
+  .component-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .component-details {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .component-name {
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .component-type {
+    font-size: 11px;
+    color: var(--figma-color-text-secondary);
+  }
+
+  .json-section {
+    background: var(--figma-color-bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .json-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--figma-color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .json-structure h3{
+    color: var(--figma-color-bg-secondary) !important;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 16px;
+    border: none;
+    background: transparent;
+    color: var(--figma-color-text);
+    font-family: 'SF Mono', monospace;
+    font-size: 12px;
+    resize: vertical;
+  }
+
+  .footer {
+    padding: 16px;
+    border-top: 1px solid var(--figma-color-border);
+    display: flex;
+    justify-content: space-between;
+    background: var(--figma-color-bg);
+  }
+
+  .button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 80px;
+  }
+
+  .button.primary {
+    background: var(--figma-color-bg-brand-tertiary);
+    color: var(--figma-color-text-brand);
+    border: none;
+  }
+
+  .button.primary:hover {
+    background: var(--figma-color-bg-tertiary);
+  }
+
+  .button.secondary {
+    background: var(--figma-color-bg-secondary);
+    color: var(--figma-color-text-secondary);
+    border: 1px solid var(--figma-color-border);
+  }
+
+  .button.secondary:hover {
+    background: var(--figma-color-bg-tertiary);
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .text-button {
+    background: none;
+    border: none;
+    color: var(--figma-color-text-brand);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+
+  .text-button:hover {
+    background: var(--figma-color-bg-brand-tertiary);
+    border-radius: 4px;
+  }
+
+  .component-details-panel {
+    margin-top: 24px;
+  }
+
+  .component-structure {
+    margin: 10px 0;
+    background-color: #fffdf7;
+    border: 1px solid #f2efe8;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .component-structure h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+  }
+
+  .data-fields {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+
+  .data-fields thead {
+    background: var(--figma-color-bg-tertiary);
+  }
+
+  .data-fields th {
+    text-align: left;
+    padding: 12px;
+    font-weight: 500;
+    color: var(--figma-color-text-secondary);
+    border-bottom: 1px solid var(--figma-color-border);
+  }
+
+  .data-fields td {
+    padding: 12px;
+    border-bottom: 1px solid var(--figma-color-border);
+  }
+
+  .data-fields tr:nth-child(even) td {
+    background: var(--figma-color-bg-secondary);
+  }
+
+  .variant-count {
+    font-size: 11px;
+    color: var(--figma-color-text-secondary);
+    background: var(--figma-color-bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .json-preview {
+    background: var(--figma-color-bg-tertiary);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  .json-preview code {
+    font-family: 'SF Mono', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--figma-color-text);
+  }
+
+  .json-key {
+    color: #C5A5C5;
+  }
+
+  .json-string {
+    color: #98C379;
+  }
+
+  .json-number {
+    color: #D19A66;
+  }
+
+  .component-structure {
+    display: grid;
+    gap: 24px;
+  }
+
+  .component-structure h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0;
+    color: var(--figma-color-text);
+  }
+</style>
+
+<script>
+  let currentStep = 1;
+  let selectedComponent = null;
+
+  function updateUI() {
+    // Update tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      const step = parseInt(tab.dataset.step);
+      tab.classList.toggle('active', step === currentStep);
+    });
+
+    // Update content
+    document.querySelectorAll('.step-content').forEach(content => {
+      const step = parseInt(content.dataset.step);
+      content.classList.toggle('active', step === currentStep);
+    });
+
+    // Update buttons
+    document.getElementById('prevStep').disabled = currentStep === 1;
+    document.getElementById('nextStep').textContent = currentStep === 3 ? 'Generate' : 'Next';
+  }
+
+  // Navigation
+  document.getElementById('prevStep').onclick = () => {
+    if (currentStep > 1) {
+      currentStep--;
+      updateUI();
+    }
+  };
+
+  document.getElementById('nextStep').onclick = () => {
+    if (currentStep < 3) {
+      currentStep++;
+      updateUI();
+    } else {
+      // Handle generate
+    }
+  };
+
+  // Component Selection
+  onmessage = async (event) => {
+    const msg = event.data.pluginMessage;
+    console.log('Received message:', msg);
+    
+    if (msg.type === 'component-deselected') {
+      console.log('Handling deselection');
+      selectedComponent = null;
+      document.getElementById('selectInstructions').classList.remove('hidden');
+      document.getElementById('componentDetails').classList.add('hidden');
+      updateUI();
+    }
+    
+    if (msg.type === 'component-selected') {
+      console.log('Component selected:', msg.component);
+      selectedComponent = msg.component;
+      
+      // Hide instructions
+      const instructions = document.getElementById('selectInstructions');
+      console.log('Instructions element:', instructions);
+      instructions.classList.add('hidden');
+      
+      // Show component details
+      const detailsPanel = document.getElementById('componentDetails');
+      console.log('Details panel element:', detailsPanel);
+      detailsPanel.classList.remove('hidden');
+      
+      // Update component info
+      const nameEl = detailsPanel.querySelector('.component-name');
+      const variantEl = detailsPanel.querySelector('.variant-count');
+      console.log('Name and variant elements:', nameEl, variantEl);
+      
+      nameEl.textContent = msg.component.name;
+      variantEl.textContent = `${msg.component.variants.length} variants`;
+      
+      // Populate data fields table
+      const tbody = detailsPanel.querySelector('.data-fields tbody');
+      console.log('Table body element:', tbody);
+      tbody.innerHTML = msg.component.fields.map(field => `
+        <tr>
+          <td>${field.name}</td>
+          <td>${field.type}</td>
+          <td>${field.description || ''}</td>
+        </tr>
+      `).join('');
+      
+      // Format JSON with syntax highlighting
+      const jsonStructure = {
+        name: "string",
+        imageUrl: "string",
+        appearance: "string (Blue | Green | Yellow | Red)",
+        facts: [{
+          text: "string",
+          points: "number"
+        }]
       };
+      
+      const jsonEl = document.getElementById('jsonStructure');
+      const jsonString = JSON.stringify(jsonStructure, null, 2);
+      const highlightedJson = jsonString.replace(
+        /"([^"]+)":/g, '<span class="json-key">"$1"</span>:'
+      ).replace(
+        /: "([^"]+)"/g, ': <span class="json-string">"$1"</span>'
+      ).replace(
+        /: (\d+)/g, ': <span class="json-number">$1</span>'
+      );
+      
+      jsonEl.innerHTML = highlightedJson;
+      
+      updateUI();
+    }
+  };
 
-      // Replace the loadComponents function with this:
-      window.onload = () => {
-        // Request components list from the plugin
-        parent.postMessage({ 
-          pluginMessage: { type: 'get-components' }
-        }, '*');
-      };
+  // Copy Template
+  document.getElementById('copyTemplate').onclick = async () => {
+    const template = {
+      "locations": [{
+        "name": "Location Name",
+        "imageUrl": "https://example.com/image.jpg",
+        "appearance": "Blue",
+        "facts": [
+          { "text": "Fact 1", "points": 10 },
+          { "text": "Fact 2", "points": 20 },
+          { "text": "Fact 3", "points": 30 }
+        ]
+      }]
+    };
+    
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(template, null, 2));
+      const button = document.getElementById('copyTemplate');
+      button.textContent = 'Copied!';
+      setTimeout(() => button.textContent = 'Copy Template', 2000);
+    } catch (err) {
+      console.error('Failed to copy template:', err);
+    }
+  };
 
-      // Update submit handler
-      document.getElementById("submit").onclick = () => {
-        const componentKey = document.getElementById("componentSelect").value;
-        const jsonData = document.getElementById("jsonData").value;
-        const status = document.getElementById("status");
-
-        if (!componentKey) {
-          showError("Please select a component first");
-          return;
-        }
-
-        try {
-          // Validate JSON
-          JSON.parse(jsonData);
-          
-          // Hide any previous error
-          status.classList.add('hidden');
-          
-          // Send message to plugin
-          parent.postMessage({
-            pluginMessage: {
-              type: "hydrate-cards",
-              componentKey,
-              jsonData,
-            },
-          }, "*");
-        } catch (e) {
-          showError(`Invalid JSON: ${e.message}`);
-        }
-      };
-
-      function showError(message) {
-        const status = document.getElementById("status");
-        status.innerHTML = message;
-        status.classList.remove('hidden');
-        status.classList.add('error');
-      }
-    </script>
-
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        margin: 0;
-        padding: 20px;
-        background-color: var(--figma-color-bg);
-        color: var(--figma-color-text);
-      }
-
-      .form-group {
-        margin-bottom: 16px;
-      }
-
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--figma-color-text-secondary);
-      }
-
-      .select-wrapper {
-        position: relative;
-        background: var(--figma-color-bg-secondary);
-        border: 1px solid var(--figma-color-border);
-        border-radius: 2px;
-      }
-
-      .select-wrapper::after {
-        content: "▼";
-        font-size: 8px;
-        color: var(--figma-color-text-secondary);
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-      }
-
-      select {
-        width: 100%;
-        padding: 8px;
-        font-size: 11px;
-        background: transparent;
-        border: none;
-        outline: none;
-        appearance: none;
-        color: var(--figma-color-text);
-      }
-
-      .textarea-wrapper {
-        background: var(--figma-color-bg-secondary);
-        border: 1px solid var(--figma-color-border);
-        border-radius: 2px;
-        padding: 1px;
-      }
-
-      textarea {
-        width: 100%;
-        padding: 8px;
-        background: transparent;
-        border: none;
-        color: var(--figma-color-text);
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-        font-size: 11px;
-        line-height: 1.4;
-        resize: vertical;
-        min-height: 200px;
-        outline: none;
-      }
-
-      .primary-button {
-        background: var(--figma-color-bg-brand);
-        color: var(--figma-color-text-onbrand);
-        border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 11px;
-        width: 100%;
-      }
-
-      .primary-button:hover {
-        background: var(--figma-color-bg-brand-hover);
-      }
-
-      .primary-button:active {
-        background: var(--figma-color-bg-brand-pressed);
-      }
-
-      .status-message {
-        margin-top: 16px;
-        padding: 12px;
-        border-radius: 2px;
-        font-size: 11px;
-        line-height: 1.4;
-      }
-
-      .error {
-        background-color: var(--figma-color-bg-danger);
-        color: var(--figma-color-text-ondanger);
-      }
-
-      .hidden {
-        display: none;
-      }
-    </style>
-  </body>
-</html>
+  // Initialize
+  updateUI();
+</script>

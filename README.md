@@ -19,7 +19,7 @@ This plugin helps designers quickly populate a card component system with locati
 1. **Component Structure**
    Your Figma file needs a component set with:
    - Name: "PlaceCard" (or similar)
-   - Color variants: Blue, Green, Yellow
+   - Color variants: Blue, Green, Yellow, Red
    - Required layers:
      - "Name" (Text layer)
      - "Image" (Rectangle layer)
