@@ -1,0 +1,14 @@
+{
+  "name": "Card Crafter",
+  "id": "card-crafter",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "editorType": ["figma"],
+  "ui": "ui.html",
+  "networkAccess": {
+    "allowedDomains": ["*"],
+    "reasoning": "The application needs to access external resources for card data hydration."
+  }
+}

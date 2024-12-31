@@ -1,0 +1,384 @@
+{
+  "locations": [
+    {
+      "name": "Mount Everest",
+      "imageUrl": "https://drive.google.com/file/d/1lvrRQql38XReJbL1spDJOgBIAwQL_41V/view?usp=sharing",
+      "appearance": "Green",
+      "facts": [
+        {
+          "text": "Located in the Himalayas between Nepal and Tibet",
+          "points": 1
+        },
+        {
+          "text": "Its peak contains marine limestone formed from an ancient seafloor",
+          "points": 2
+        },
+        {
+          "text": "The jet stream can blow directly on its peak, with winds reaching 200 mph",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Great Barrier Reef",
+      "imageUrl": "https://cdn.midjourney.com/99401bad-4ec8-4345-8e8b-79f3f6091de4/0_1.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Located off the coast of Queensland, Australia",
+          "points": 1
+        },
+        {
+          "text": "Home to more than 1,500 species of tropical fish",
+          "points": 2
+        },
+        {
+          "text": "The only living structure visible from space",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Venice",
+      "imageUrl": "https://cdn.midjourney.com/2e84c611-8a5d-4235-9fcd-fbd95710a8e5/0_3.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "A city built on 118 small islands connected by canals",
+          "points": 1
+        },
+        {
+          "text": "The entire city stands on wooden piles driven into the seabed",
+          "points": 2
+        },
+        {
+          "text": "The local stone Istrian was chosen for its impermeability to water",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Sahara Desert",
+      "imageUrl": "https://cdn.midjourney.com/82eb31a8-8f80-46e0-b18c-91754f171e45/0_2.png",
+      "appearance": "Yellow",
+      "facts": [
+        {
+          "text": "The world's largest hot desert, covering most of North Africa",
+          "points": 1
+        },
+        {
+          "text": "Its sand dunes can reach heights of up to 590 feet",
+          "points": 2
+        },
+        {
+          "text": "Was once a lush grassland about 10,000 years ago",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Dead Sea",
+      "imageUrl": "https://cdn.midjourney.com/7a1e51c9-fce1-41ee-b39d-f14e3ea1fcc0/0_3.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Located between Israel and Jordan",
+          "points": 1
+        },
+        {
+          "text": "Its water is about 10 times saltier than regular seawater",
+          "points": 2
+        },
+        {
+          "text": "Contains unique microorganisms that can survive in extreme salt conditions",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Machu Picchu",
+      "imageUrl": "https://cdn.midjourney.com/541f8a65-0235-483d-b120-0c5778c158d9/0_2.png",
+      "appearance": "Green",
+      "facts": [
+        {
+          "text": "An ancient Incan city in Peru",
+          "points": 1
+        },
+        {
+          "text": "Built without using wheels or iron tools",
+          "points": 2
+        },
+        {
+          "text": "Its stones are cut so precisely that no mortar was needed",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Aurora Borealis",
+      "imageUrl": "https://cdn.midjourney.com/9b156a34-c6e3-47c0-890a-7d202d32f46c/0_1.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Colorful lights visible in the northern sky",
+          "points": 1
+        },
+        {
+          "text": "Occurs when charged particles from the sun hit Earth's atmosphere",
+          "points": 2
+        },
+        {
+          "text": "Can produce up to 1 trillion watts of power",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Lake Baikal",
+      "imageUrl": "https://cdn.midjourney.com/6b6cd9a0-986c-4d42-9203-b6127fde13e5/0_1.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Located in Siberia, Russia",
+          "points": 1
+        },
+        {
+          "text": "Contains 20% of Earth's unfrozen fresh water",
+          "points": 2
+        },
+        {
+          "text": "Home to the only freshwater seal species in the world",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Mount Kilimanjaro",
+      "imageUrl": "https://cdn.midjourney.com/66c507be-8940-4566-9eec-f0ea945bd411/0_1.png",
+      "appearance": "Green",
+      "facts": [
+        {
+          "text": "Africa's highest mountain, located in Tanzania",
+          "points": 1
+        },
+        {
+          "text": "Composed of three extinct volcanoes",
+          "points": 2
+        },
+        {
+          "text": "Its name might mean 'Mountain of Light' in Swahili",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Great Wall of China",
+      "imageUrl": "https://cdn.midjourney.com/b106d36b-7828-4f0f-bd25-5187b4902b11/0_2.png",
+      "appearance": "Yellow",
+      "facts": [
+        {
+          "text": "Ancient defensive wall system in northern China",
+          "points": 1
+        },
+        {
+          "text": "Built over different dynasties spanning 2,000 years",
+          "points": 2
+        },
+        {
+          "text": "The mortar used contains sticky rice",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Angel Falls",
+      "imageUrl": "https://cdn.midjourney.com/d957bcde-d975-4215-a376-02e3b6e7d094/0_0.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "World's highest uninterrupted waterfall, located in Venezuela",
+          "points": 1
+        },
+        {
+          "text": "Falls from the edge of Auyantepui mountain",
+          "points": 2
+        },
+        {
+          "text": "Water turns to mist before reaching the ground in dry season",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Galapagos Islands",
+      "imageUrl": "https://cdn.midjourney.com/3c4ea8f5-9080-47b3-9701-e3954a2a3e8f/0_2.png",
+      "appearance": "Green",
+      "facts": [
+        {
+          "text": "Volcanic islands off the coast of Ecuador",
+          "points": 1
+        },
+        {
+          "text": "Home to giant tortoises that can live over 100 years",
+          "points": 2
+        },
+        {
+          "text": "The islands are moving southeast at about 2.5 inches per year",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Petra",
+      "imageUrl": "https://cdn.midjourney.com/f8cb73eb-94d4-4f86-af62-cb63f4842687/0_2.png",
+      "appearance": "Red",
+      "facts": [
+        {
+          "text": "Ancient city carved into rose-colored rock in Jordan",
+          "points": 1
+        },
+        {
+          "text": "Features an advanced water conduit system",
+          "points": 2
+        },
+        {
+          "text": "Contains over 800 monuments and 500 rock-cut altars",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Yellowstone",
+      "imageUrl": "https://cdn.midjourney.com/b249e73f-5ba5-4a33-a44a-29e19310874e/0_1.png",
+      "appearance": "Yellow",
+      "facts": [
+        {
+          "text": "First national park in the U.S., known for geothermal features",
+          "points": 1
+        },
+        {
+          "text": "Sits on top of a supervolcano",
+          "points": 2
+        },
+        {
+          "text": "Contains half of the world's hydrothermal features",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Maldives",
+      "imageUrl": "https://cdn.midjourney.com/6a294cce-5baa-4a7d-94eb-34d4cfa56a5f/0_3.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Island nation in the Indian Ocean",
+          "points": 1
+        },
+        {
+          "text": "Made up of 26 natural atolls",
+          "points": 2
+        },
+        {
+          "text": "Has underwater cabinet meetings to highlight rising sea levels",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Santorini",
+      "imageUrl": "https://cdn.midjourney.com/b32be883-3a66-4482-b5f4-2fdd04425a80/0_0.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Greek island known for white buildings and blue domes",
+          "points": 1
+        },
+        {
+          "text": "Created by one of the largest volcanic eruptions in history",
+          "points": 2
+        },
+        {
+          "text": "Its volcanic soil produces unique white eggplants",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Victoria Falls",
+      "imageUrl": "https://cdn.midjourney.com/6704fb62-59d6-44c1-b5a0-e2da8dbab486/0_2.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Located between Zambia and Zimbabwe",
+          "points": 1
+        },
+        {
+          "text": "Creates the largest curtain of falling water in the world",
+          "points": 2
+        },
+        {
+          "text": "Spray can be seen from 30 miles away",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Cappadocia",
+      "imageUrl": "https://cdn.midjourney.com/0ea40066-fc1d-4da5-b6dc-667a018e6fa5/0_2.png",
+      "appearance": "Yellow",
+      "facts": [
+        {
+          "text": "Region in Turkey known for unique rock formations",
+          "points": 1
+        },
+        {
+          "text": "Has underground cities that go 8 levels deep",
+          "points": 2
+        },
+        {
+          "text": "Its rocks are made of compressed volcanic ash",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Antarctica",
+      "imageUrl": "https://cdn.midjourney.com/f653003a-032d-402d-baa1-aae7e3bceb77/0_1.png",
+      "appearance": "Blue",
+      "facts": [
+        {
+          "text": "Earth's southernmost continent",
+          "points": 1
+        },
+        {
+          "text": "Contains about 90% of the world's ice",
+          "points": 2
+        },
+        {
+          "text": "Has a desert with the lowest recorded natural precipitation",
+          "points": 5
+        }
+      ]
+    },
+    {
+      "name": "Giant's Causeway",
+      "imageUrl": "https://cdn.midjourney.com/d9d62f7c-637b-447c-b97a-2788a33116ee/0_1.png",
+      "appearance": "Red",
+      "facts": [
+        {
+          "text": "Unique rock formation in Northern Ireland",
+          "points": 1
+        },
+        {
+          "text": "Formed by volcanic activity 60 million years ago",
+          "points": 2
+        },
+        {
+          "text": "The columns have mostly hexagonal shapes due to cooling lava",
+          "points": 5
+        }
+      ]
+    }
+  ]
+}

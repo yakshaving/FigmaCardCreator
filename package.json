@@ -1,0 +1,19 @@
+{
+  "name": "card-crafter",
+  "version": "1.0.0",
+  "description": "Your plugin description",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch"
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@figma/plugin-typings": "*",
+    "@typescript-eslint/eslint-plugin": "*",
+    "@typescript-eslint/parser": "*",
+    "typescript": "*",
+    "eslint": "*"
+  }
+} 

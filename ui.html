@@ -1,0 +1,299 @@
+<html>
+  <body>
+    <div id="root">
+      <div class="form-group">
+        <label for="componentSelect">Card Component</label>
+        <div class="select-wrapper">
+          <select id="componentSelect">
+            <option value="">Loading components...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="jsonData">Location Data</label>
+        <div class="textarea-wrapper">
+          <textarea 
+            id="jsonData" 
+            rows="20" 
+            spellcheck="false"
+            placeholder="Paste your locations JSON here..."
+          ></textarea>
+        </div>
+      </div>
+
+      <button id="submit" class="primary-button">Generate Cards</button>
+      
+      <div id="status" class="status-message hidden"></div>
+    </div>
+
+    <script>
+      // Add image resizing function to UI context
+      async function resizeImage(url, maxSize = 2048) {
+        try {
+          // Fetch the image
+          const response = await fetch(url);
+          const blob = await response.blob();
+
+          // Create an image element
+          const img = new Image();
+
+          // Convert blob to data URL
+          const reader = new FileReader();
+          const dataUrl = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+
+          // Load the image
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = dataUrl;
+          });
+
+          // Create a canvas to resize the image
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Draw and get the resized image data
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          const resizedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+          // Convert data URL to Uint8Array
+          const base64 = resizedDataUrl.split(",")[1];
+          const binaryString = atob(base64);
+          const uint8Array = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            uint8Array[i] = binaryString.charCodeAt(i);
+          }
+
+          return Array.from(uint8Array);
+        } catch (err) {
+          console.error("Error resizing image:", err);
+          throw err;
+        }
+      }
+
+      // Listen for resize requests from the plugin
+      onmessage = async (event) => {
+        const msg = event.data.pluginMessage;
+
+        if (msg.type === "resize-image") {
+          try {
+            const resizedData = await resizeImage(msg.url);
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "resized-image",
+                  data: resizedData,
+                },
+              },
+              "*"
+            );
+          } catch (err) {
+            console.error("Error in UI resizing image:", err);
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "error",
+                  message: "Failed to resize image: " + err.message,
+                },
+              },
+              "*"
+            );
+          }
+        }
+
+        if (msg.type === 'components-list') {
+          const select = document.getElementById('componentSelect');
+          if (msg.components && msg.components.length > 0) {
+            select.innerHTML = msg.components.map(c => 
+              `<option value="${c.key}">${c.name}</option>`
+            ).join('');
+          } else {
+            select.innerHTML = '<option value="">No card components found</option>';
+            showError(
+              "No card components found in the current page. Please ensure you have:" +
+              "<ul>" +
+              "<li>A component or component set in the current page</li>" +
+              "<li>The component has a text layer named exactly 'Name'</li>" +
+              "</ul>"
+            );
+          }
+        }
+      };
+
+      // Replace the loadComponents function with this:
+      window.onload = () => {
+        // Request components list from the plugin
+        parent.postMessage({ 
+          pluginMessage: { type: 'get-components' }
+        }, '*');
+      };
+
+      // Update submit handler
+      document.getElementById("submit").onclick = () => {
+        const componentKey = document.getElementById("componentSelect").value;
+        const jsonData = document.getElementById("jsonData").value;
+        const status = document.getElementById("status");
+
+        if (!componentKey) {
+          showError("Please select a component first");
+          return;
+        }
+
+        try {
+          // Validate JSON
+          JSON.parse(jsonData);
+          
+          // Hide any previous error
+          status.classList.add('hidden');
+          
+          // Send message to plugin
+          parent.postMessage({
+            pluginMessage: {
+              type: "hydrate-cards",
+              componentKey,
+              jsonData,
+            },
+          }, "*");
+        } catch (e) {
+          showError(`Invalid JSON: ${e.message}`);
+        }
+      };
+
+      function showError(message) {
+        const status = document.getElementById("status");
+        status.innerHTML = message;
+        status.classList.remove('hidden');
+        status.classList.add('error');
+      }
+    </script>
+
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: var(--figma-color-bg);
+        color: var(--figma-color-text);
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--figma-color-text-secondary);
+      }
+
+      .select-wrapper {
+        position: relative;
+        background: var(--figma-color-bg-secondary);
+        border: 1px solid var(--figma-color-border);
+        border-radius: 2px;
+      }
+
+      .select-wrapper::after {
+        content: "▼";
+        font-size: 8px;
+        color: var(--figma-color-text-secondary);
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      select {
+        width: 100%;
+        padding: 8px;
+        font-size: 11px;
+        background: transparent;
+        border: none;
+        outline: none;
+        appearance: none;
+        color: var(--figma-color-text);
+      }
+
+      .textarea-wrapper {
+        background: var(--figma-color-bg-secondary);
+        border: 1px solid var(--figma-color-border);
+        border-radius: 2px;
+        padding: 1px;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 8px;
+        background: transparent;
+        border: none;
+        color: var(--figma-color-text);
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+        font-size: 11px;
+        line-height: 1.4;
+        resize: vertical;
+        min-height: 200px;
+        outline: none;
+      }
+
+      .primary-button {
+        background: var(--figma-color-bg-brand);
+        color: var(--figma-color-text-onbrand);
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 11px;
+        width: 100%;
+      }
+
+      .primary-button:hover {
+        background: var(--figma-color-bg-brand-hover);
+      }
+
+      .primary-button:active {
+        background: var(--figma-color-bg-brand-pressed);
+      }
+
+      .status-message {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 2px;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .error {
+        background-color: var(--figma-color-bg-danger);
+        color: var(--figma-color-text-ondanger);
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </body>
+</html>
