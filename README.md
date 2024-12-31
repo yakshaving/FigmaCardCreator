@@ -1,111 +1,99 @@
-# Location Cards Generator - Figma Plugin
+# Card Crafter - Figma Plugin
 
-A Figma plugin that automatically generates location cards from JSON data, applying the correct variant styles based on location type.
-
-<img width="1441" alt="image" src="https://github.com/user-attachments/assets/d9c80873-eaac-415e-9394-00106c9bf8c0" />
-
+A Figma plugin that automatically generates cards from JSON data, with support for component variants and data mapping.
 
 ## Overview
 
-This plugin helps designers quickly populate a card component system with location data. It takes a JSON input containing location information and automatically:
-- Creates instances of the card component
-- Sets the correct color variant based on location type (Blue/Green/Yellow)
-- Populates text fields (name, facts, points)
-- Adds location images
-- Arranges cards in a clean grid layout
-
-## Setup Requirements
-
-1. **Component Structure**
-   Your Figma file needs a component set with:
-   - Name: "PlaceCard" (or similar)
-   - Color variants: Blue, Green, Yellow, Red
-   - Required layers:
-     - "Name" (Text layer)
-     - "Image" (Rectangle layer)
-     - "Fact1", "Fact2", "Fact3" (Text layers)
-     - "Points1", "Points2", "Points3" (Text layers)
-     - "Potential Points" (Text layer)
-
-2. **JSON Structure**
-   ```json
-   {
-     "locations": [
-       {
-         "name": "Location Name",
-         "imageUrl": "https://image-url.com/image.jpg",
-         "appearance": "Blue", // or "Green" or "Yellow"
-         "facts": [
-           {
-             "text": "Fact description",
-             "points": 5
-           },
-           // ... more facts
-         ]
-       },
-       // ... more locations
-     ]
-   }
-   ```
+This plugin helps designers quickly populate any card component with data. It provides a simple wizard interface to:
+1. Select any component with text and image layers
+2. Map JSON data to component fields
+3. Generate multiple instances with proper styling and layout
 
 ## Features
 
-- **Automatic Variant Selection**: Automatically applies the correct color variant based on the location type
+- **Component Analysis**: Automatically detects text layers, images, and variants
+- **Flexible Data Mapping**: Works with any component structure that has text and image layers
+- **Variant Support**: Automatically handles component variants
 - **Smart Layout**: Arranges cards in a grid with consistent spacing
 - **Error Handling**: Gracefully handles missing data or failed image loads
-- **Responsive UI**: Clean interface for component selection and JSON input
-- **Auto-sorting**: Automatically sorts facts by points value
-- **Image Processing**: Handles image resizing and optimization
+- **JSON Template**: Provides correct data structure based on component analysis
 
 ## Usage
 
-1. Open your Figma file containing the card component
-2. Run the Location Cards Generator plugin
-3. Select your card component from the dropdown
-4. Paste your location JSON data
-5. Click "Generate Cards"
+1. **Select Component**
+   - Open the plugin
+   - Select any component in your Figma file
+   - The plugin analyzes available fields and variants
 
-The plugin will create a new frame containing all your cards, properly styled and arranged.
+2. **Add Data**
+   - Use the provided JSON template
+   - Paste your data matching the structure
+   - The plugin validates your input
+
+3. **Generate Cards**
+   - Click Generate to create card instances
+   - Cards are arranged in a responsive grid
+   - Failed cards are skipped with notifications
+
+## Component Requirements
+
+Your component should have:
+- Text layers for content
+- Optional image layers
+- Optional variants
+- Consistent layer naming
+
+## JSON Structure Example
+
+```json
+{
+  "locations": [
+    {
+      "name": "Item Name",
+      "imageUrl": "https://example.com/image.jpg",
+      "appearance": "Blue",  // matches variant name
+      "facts": [
+        {
+          "text": "Fact text",
+          "points": 10
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Technical Details
 
-- Built with TypeScript
-- Uses Figma's Plugin API
-- Handles component variants through properties
-- Processes images client-side for optimization
-- Uses auto-layout for consistent spacing
-- Implements error handling and logging
+- Built with TypeScript and Figma's Plugin API
+- No external dependencies
+- Uses client-side image processing
+- Implements auto-layout for spacing
+- Includes comprehensive error handling
 
 ## Development
 
-To modify this plugin:
+The plugin is built using:
+- TypeScript for type safety
+- Figma Plugin API
+- HTML/CSS for the UI
+- No external dependencies
 
+To develop:
 1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Make your changes
-4. Build the plugin:
-   ```bash
-   npm run build
-   ```
+2. Install dependencies: `npm install`
+3. Build: `npm run build`
+4. Import into Figma as a development plugin
 
 ## Error Handling
 
-The plugin includes comprehensive error handling for:
-- Invalid JSON data
-- Missing component properties
-- Failed image loads
-- Missing text layers
-- Font loading issues
-
-Errors are logged to the console and displayed to the user when appropriate.
-
-## Contributing
-
-Feel free to submit issues and pull requests for new features or improvements.
+The plugin includes robust error handling for:
+- Invalid component selection
+- Malformed JSON data
+- Failed image loading
+- Missing required layers
+- Network timeouts
 
 ## License
 
-MIT License
+MIT License - feel free to modify and reuse this code.
