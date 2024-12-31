@@ -2,6 +2,9 @@
 
 A Figma plugin that automatically generates location cards from JSON data, applying the correct variant styles based on location type.
 
+<img width="1441" alt="image" src="https://github.com/user-attachments/assets/d9c80873-eaac-415e-9394-00106c9bf8c0" />
+
+
 ## Overview
 
 This plugin helps designers quickly populate a card component system with location data. It takes a JSON input containing location information and automatically:
