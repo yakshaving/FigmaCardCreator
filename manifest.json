@@ -8,7 +8,10 @@
   "editorType": ["figma"],
   "ui": "ui.html",
   "networkAccess": {
-    "allowedDomains": ["*"],
+    "allowedDomains": [
+      "https://images.unsplash.com",
+      "https://*.unsplash.com"
+    ],
     "reasoning": "The application needs to access external resources for card data hydration."
   }
 }
