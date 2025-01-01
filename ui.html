@@ -1,4 +1,4 @@
-<div id="root">
+    <div id="root">
   <div class="tabs">
     <div class="tab active" data-step="1">
       <span>1</span> Select Component</div>
@@ -70,13 +70,13 @@
             Copy Template
           </button>
         </div>
-        <textarea 
-          id="jsonData" 
+          <textarea 
+            id="jsonData" 
           spellcheck="primary"
           placeholder="Paste JSON Data here..."
-        ></textarea>
+          ></textarea>
+        </div>
       </div>
-    </div>
 
     <!-- Step 3: Field Mapping -->
     <div class="step-content" data-step="3">
@@ -114,6 +114,7 @@
     --figma-color-text-secondary: #666666;
     --figma-color-bg-secondary: #F5F5F5;
     --figma-color-bg-brand: #084d7b;
+    --figma-dark-code-background: #211b2a;
     --figma-color-bg-brand-hover: #0D8DE3;
     --figma-color-text-onbrand: #FFFFFF;
     --figma-color-bg-hover: #EAEAEA;
@@ -362,10 +363,10 @@
   }
 
   .component-structure {
-    margin: 10px 0;
+    margin: 5px 0;
     background-color: #fffdf7;
     border: 1px solid #f2efe8;
-    padding: 10px;
+    /* padding: 10px; */
     border-radius: 8px;
   }
 
@@ -373,6 +374,7 @@
     font-size: 13px;
     font-weight: 600;
     margin: 0 0 12px 0;
+    padding: 5px 5px 0px 10px;
   }
 
   .data-fields {
@@ -389,14 +391,14 @@
 
   .data-fields th {
     text-align: left;
-    padding: 8px;
+    padding: 5px;
     font-weight: 500;
     color: #666666;
     border-bottom: 1px solid var(--figma-color-border);
   }
 
   .data-fields td {
-    padding: 8px;
+    padding: 6px;
     border-bottom: 1px solid var(--figma-color-border);
   }
 
@@ -414,7 +416,7 @@
   }
 
   .json-preview {
-    background: #F5F5F5;
+    background: var(--figma-dark-code-background);
     border: 1px solid #E5E5E5;
     border-radius: var(--border-radius-md);
     padding: var(--spacing-md);
@@ -429,7 +431,7 @@
     font-size: 10px;
     line-height: 140%;
     font-weight: 300;
-    color: #333333;
+    color: #7c7c7c;
   }
 
   .json-key {
@@ -534,6 +536,56 @@
     font-size: 10px;
     color: var(--figma-color-text-secondary);
   }
+
+  .tab {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .tab[data-visited="true"], 
+  .tab.active {
+    opacity: 1;
+    cursor: pointer;
+  }
+
+  .tab[data-visited="true"]:hover {
+    background: var(--figma-color-bg-hover);
+  }
+
+  .tab.active:hover {
+    background: var(--figma-color-bg-brand-hover);
+  }
+
+  .validation-warning {
+    padding: 5px;
+    background-color: #D4351C;
+    border-top: 1px solid #e7a79d;
+    box-shadow: 0 -3px 3px #e7a79d3b;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .warning-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    color: #fff;
+  }
+
+  .warning-message {
+    font-size: 11px;
+    letter-spacing: -0.02em;
+    color: #ffffff92;
+  }
+
+  .warning-message > span {
+    font-weight: bold;
+    color: #fff;
+  }
+
+  .hidden {
+    display: none;
+  }
 </style>
 
 <script>
@@ -546,41 +598,90 @@
     console.log('Updating UI, current step:', currentStep);
     console.log('Selected component:', selectedComponent);
     
-    // Update tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-      const step = parseInt(tab.dataset.step);
-      tab.classList.toggle('active', step === currentStep);
-    });
-
-    // Update content
-    document.querySelectorAll('.step-content').forEach(content => {
-      const step = parseInt(content.dataset.step);
-      content.classList.toggle('active', step === currentStep);
-    });
-
-    // Update buttons
-    const prevButton = document.getElementById('prevStep');
-    const nextButton = document.getElementById('nextStep');
+    // Update selection state UI
+    const selectInstructions = document.getElementById('selectInstructions');
+    const componentDetails = document.getElementById('componentDetails');
+    const warningDiv = document.getElementById('validationWarning');
     
-    prevButton.disabled = currentStep === 1;
-    nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
-    
-    // Enable/disable next button based on current step
-    if (currentStep === 1) {
-      nextButton.disabled = !selectedComponent;
-    } else if (currentStep === 2) {
-      const jsonData = document.getElementById('jsonData').value;
-      try {
-        JSON.parse(jsonData);
-        nextButton.disabled = false;
-      } catch (e) {
-        nextButton.disabled = true;
+    if (selectedComponent) {
+      selectInstructions.classList.add('hidden');
+      componentDetails.classList.remove('hidden');
+      
+      // Check for duplicate field names
+      const duplicates = findDuplicateFields(selectedComponent.fields);
+      const nextButton = document.getElementById('nextStep');
+      
+      if (duplicates.length > 0) {
+        // Show warning
+        const warningDiv = document.getElementById('validationWarning') || createValidationWarning();
+        warningDiv.innerHTML = `
+          <div class="warning-icon">⚠️</div>
+          <div class="warning-message">
+            <span>Found duplicate field names: ${duplicates.join(', ')}.</span><br>
+            Please fix the layer names in your component to proceed.
+          </div>
+        `;
+        warningDiv.classList.remove('hidden');
+        
+        // Disable next button
+        if (nextButton) {
+          nextButton.disabled = true;
+          nextButton.title = 'Please fix duplicate field names to proceed';
+        }
+      } else {
+        if (warningDiv) {
+          warningDiv.classList.add('hidden');
+        }
+        if (nextButton) {
+          nextButton.disabled = !canProceedToNextStep();
+          nextButton.title = '';
+        }
+      }
+    } else {
+      selectInstructions.classList.remove('hidden');
+      componentDetails.classList.add('hidden');
+      // Hide warning when no component is selected
+      if (warningDiv) {
+        warningDiv.classList.add('hidden');
       }
     }
+    
+    // Mark tabs as visited
+    document.querySelectorAll('.tab').forEach(tab => {
+      const stepNum = parseInt(tab.dataset.step);
+      if (stepNum <= currentStep) {
+        tab.setAttribute('data-visited', 'true');
+      }
+    });
+  }
 
-    if (currentStep === 3) {
-      updateMappingPreview();
-    }
+  function createValidationWarning() {
+    const warningDiv = document.createElement('div');
+    warningDiv.id = 'validationWarning';
+    warningDiv.className = 'validation-warning hidden';
+    
+    // Insert before the footer
+    const footer = document.querySelector('.footer');
+    footer.parentNode.insertBefore(warningDiv, footer);
+    
+    return warningDiv;
+  }
+
+  function findDuplicateFields(fields) {
+    const seenNames = new Set();
+    const duplicates = new Set();
+
+    fields.forEach(field => {
+      // Use exact name for duplicate checking
+      const name = field.name;
+      if (seenNames.has(name)) {
+        duplicates.add(name);
+      } else {
+        seenNames.add(name);
+      }
+    });
+
+    return Array.from(duplicates);
   }
 
   // Navigation
@@ -711,7 +812,7 @@
           }, '*');
         } catch (error) {
           console.error('Image processing error:', error);
-          parent.postMessage({ 
+          parent.postMessage({
             pluginMessage: {
               type: 'image-error',
               error: error.message
@@ -724,20 +825,41 @@
 
   // Copy Template
   document.getElementById('copyTemplate').onclick = () => {
-    const template = {
-      "locations": [{
-        "name": "Item Name",
-        "imageUrl": "https://example.com/image.jpg",
-        "appearance": "Blue",
-        "facts": [
-          { "text": "Fact text", "points": 10 }
-        ]
-      }]
-    };
+    if (!selectedComponent || !selectedComponent.fields) return;
     
-    const templateText = JSON.stringify(template, null, 2);
+    // Create a sample template based on actual fields
+    const template = {};
+    selectedComponent.fields.forEach(field => {
+      switch (field.type) {
+        case 'text':
+          template[field.name] = "Sample text";
+          break;
+        case 'image':
+          template[field.name] = "https://example.com/image.jpg";
+          break;
+        case 'variant':
+          template[field.name] = selectedComponent.variants[0] || "default";
+          break;
+        case 'boolean':
+          template[field.name] = false;
+          break;
+        case 'number':
+          template[field.name] = 0;
+          break;
+        default:
+          template[field.name] = null;
+      }
+    });
+
+    const sampleData = [template];
+    const alternativeTemplate = { items: sampleData };
     
-    // Copy to clipboard using execCommand as fallback
+    const templateText = JSON.stringify({
+      simple: sampleData,
+      withWrapper: alternativeTemplate
+    }, null, 2);
+    
+    // Copy to clipboard
     const textarea = document.createElement('textarea');
     textarea.value = templateText;
     document.body.appendChild(textarea);
@@ -762,13 +884,19 @@
     document.body.removeChild(textarea);
   };
 
-  // Add JSON validation on input
-  document.getElementById('jsonData').oninput = () => {
-    updateUI();
-    if (currentStep === 3) {
-      updateMappingPreview();
-    }
-  };
+  // Add JSON validation on input with debounce
+  const jsonInput = document.getElementById('jsonData');
+  let debounceTimer;
+
+  jsonInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      updateUI();
+      if (currentStep === 3) {
+        updateMappingPreview();
+      }
+    }, 300);
+  }, { passive: true });
 
   // Add this function to generate sample data preview
   function updateMappingPreview() {
@@ -778,14 +906,24 @@
     let sampleData;
     try {
       const data = JSON.parse(jsonData);
-      sampleData = data.locations[0]; // Use first item as sample
+      // Handle different data structures
+      if (Array.isArray(data)) {
+        sampleData = data[0];
+      } else if (typeof data === 'object') {
+        const arrayProp = Object.values(data).find(Array.isArray);
+        if (arrayProp) {
+          sampleData = arrayProp[0];
+        } else {
+          sampleData = data;
+        }
+      }
     } catch (e) {
       sampleData = {
-        name: "Mount Everest",
-        imageUrl: "https://example.com/everest.jpg",
+        name: "Example Item",
+        imageUrl: "https://example.com/image.jpg",
         appearance: "Blue",
         facts: [
-          { text: "Grows about 4mm higher every year", points: 2 }
+          { text: "Example fact", points: 2 }
         ]
       };
     }
@@ -814,6 +952,72 @@
       </tr>
     `;
   }
+
+  // Initialize
+  updateUI();
+
+  // Add passive scroll event listeners
+  document.querySelectorAll('.content, textarea').forEach(el => {
+    el.addEventListener('scroll', () => {}, { passive: true });
+  });
+
+  // Update tab click handlers to be more efficient
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const step = parseInt(tab.dataset.step || '1');
+      if (step <= currentStep) {
+        setCurrentStep(step);
+        updateUI();
+      }
+    }, { passive: true });
+  });
+
+  // Update the setCurrentStep function
+  function setCurrentStep(step) {
+    // Remove active class from all tabs and content
+    tabs.forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.step-content').forEach(c => c.classList.remove('active'));
+    
+    // Add active class to current tab and content
+    const activeTab = document.querySelector(`.tab[data-step="${step}"]`);
+    const activeContent = document.querySelector(`.step-content[data-step="${step}"]`);
+    
+    if (activeTab) activeTab.classList.add('active');
+    if (activeContent) activeContent.classList.add('active');
+    
+    currentStep = step;
+    
+    // Update button states
+    const prevButton = document.getElementById('prevStep');
+    const nextButton = document.getElementById('nextStep');
+    
+    if (prevButton) prevButton.disabled = currentStep === 1;
+    if (nextButton) {
+      nextButton.disabled = !canProceedToNextStep();
+      nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
+    }
+  }
+
+  function updateStepVisibility() {
+    // ... existing code ...
+    if (prevButton) prevButton.disabled = currentStep === 1;
+    if (nextButton) {
+      nextButton.disabled = !canProceedToNextStep();
+      nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
+    }
+  }
+
+  // Reuse existing jsonInput and debounceTimer
+  jsonInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      updateUI();
+      if (currentStep === 3) {
+        updateMappingPreview();
+      }
+    }, 300);
+  }, { passive: true });
 
   // Initialize
   updateUI();

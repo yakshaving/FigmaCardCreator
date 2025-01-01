@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": ["ES6", "DOM", "DOM.Iterable"],
-    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"],
-    "moduleResolution": "node",
-    "outDir": "dist",
+    "target": "es2017",
+    "lib": ["es2017", "dom"],
     "strict": true,
-    "skipLibCheck": true
+    "moduleResolution": "node",
+    "typeRoots": [
+      "./node_modules/@figma"
+    ]
   }
 } 

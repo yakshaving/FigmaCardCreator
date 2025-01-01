@@ -19,6 +19,7 @@ function handleSelection(selection: readonly SceneNode[]) {
     
     if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
       console.log('Valid component selected, analyzing structure...');
+      // Always analyze the component, even if it's the same one
       const componentInfo = analyzeComponent(node);
       
       if (componentInfo) {
@@ -48,6 +49,32 @@ function handleSelection(selection: readonly SceneNode[]) {
   }
 }
 
+// Set up selection change listener
+figma.on('selectionchange', () => {
+  console.log('Selection changed');
+  handleSelection(figma.currentPage.selection);
+});
+
+// Listen for document changes
+figma.on('documentchange', ({ documentChanges }) => {
+  console.log('Document changed:', documentChanges);
+  
+  // If we have a component selected, reanalyze after a short delay
+  const selection = figma.currentPage.selection;
+  if (selection.length === 1 && (selection[0].type === "COMPONENT" || selection[0].type === "COMPONENT_SET")) {
+    // Use a short delay to allow for the change to complete
+    setTimeout(() => {
+      console.log('Reanalyzing component after change');
+      handleSelection(selection);
+    }, 100);
+  }
+});
+
+// Clean up on plugin close
+figma.on('close', () => {
+  // Nothing to clean up anymore
+});
+
 // Check initial selection when plugin starts
 const initialSelection = figma.currentPage.selection;
 console.log('Initial selection:', initialSelection);
@@ -68,15 +95,11 @@ interface Fact {
   points: number;
 }
 
-interface Location {
+interface DataItem {
   name: string;
   imageUrl: string;
   appearance: "Green" | "Blue" | "Yellow" | "Red";
   facts: Fact[];
-}
-
-interface LocationData {
-  locations: Location[];
 }
 
 // Create a separate image handling module
@@ -156,7 +179,7 @@ function sortFactsByPoints(facts: Fact[]): Fact[] {
   return [...facts].sort((a, b) => b.points - a.points);
 }
 
-async function updateCardInstance(instance: InstanceNode, location: Location) {
+async function updateCardInstance(instance: InstanceNode, location: DataItem) {
   try {
     // Set the color variant based on the appearance in the JSON
     const properties = instance.componentProperties;
@@ -256,6 +279,8 @@ interface ComponentInfo {
     type: string;
     description: string;
   }[];
+  hasDuplicates: boolean;
+  duplicateFields: string[];
 }
 
 // Update the message handler
@@ -341,16 +366,30 @@ figma.ui.onmessage = async (msg) => {
         spacing: frame.itemSpacing
       });
 
-      // Parse and validate data
-      const data = JSON.parse(jsonData) as LocationData;
-      console.log('Processing', data.locations.length, 'cards');
+      // Parse data and handle different structures
+      const data = JSON.parse(jsonData);
+      let items: DataItem[] = [];
+
+      if (Array.isArray(data)) {
+        items = data;
+      } else if (typeof data === 'object' && data !== null) {
+        const arrayItems = findFirstArray(data);
+        if (arrayItems) {
+          items = arrayItems;
+        } else {
+          // If no array found, treat the object itself as a single item
+          items = [data];
+        }
+      }
+
+      console.log('Processing', items.length, 'cards');
 
       // Create and update cards
       let successCount = 0;
       let failCount = 0;
-      for (const location of data.locations) {
+      for (const item of items) {
         try {
-          console.log('Creating card for:', location.name);
+          console.log('Creating card for:', item.name);
           const instance = component.createInstance();
           frame.appendChild(instance);
           
@@ -361,7 +400,7 @@ figma.ui.onmessage = async (msg) => {
             children: frame.children.length
           });
 
-          const success = await updateCardInstance(instance, location);
+          const success = await updateCardInstance(instance, item);
           if (success) {
             successCount++;
           } else {
@@ -369,7 +408,7 @@ figma.ui.onmessage = async (msg) => {
             instance.remove();
           }
         } catch (cardError) {
-          console.error(`Failed to create card for ${location.name}:`, cardError);
+          console.error(`Failed to create card for ${item.name}:`, cardError);
           failCount++;
         }
       }
@@ -404,52 +443,102 @@ figma.ui.onmessage = async (msg) => {
 };
 
 function analyzeComponent(node: ComponentNode | ComponentSetNode): ComponentInfo | null {
+  console.log('Starting component analysis for:', {
+    id: node.id,
+    name: node.name,
+    type: node.type
+  });
+  
   const component = node.type === "COMPONENT_SET" ? node.children[0] as ComponentNode : node;
   
+  if (!component) return null;
+
   // Get variant information
   const variants = node.type === "COMPONENT_SET" ? 
     node.children.map(child => child.name) : 
     [node.name];
-  
-  // Check for required layers
-  const nameLayer = component.findOne(n => n.type === "TEXT" && n.name === "Name");
-  const imageLayer = component.findOne(n => n.type === "RECTANGLE" && n.name === "Image");
-  const factLayers = [
-    component.findOne(n => n.type === "TEXT" && n.name === "Fact1"),
-    component.findOne(n => n.type === "TEXT" && n.name === "Fact2"),
-    component.findOne(n => n.type === "TEXT" && n.name === "Fact3")
-  ];
-  
-  if (!nameLayer || !imageLayer || factLayers.some(l => !l)) {
-    return null;
+
+  // Find all text layers and their names, preserving their vertical order
+  const textLayers = component.findAll(n => n.type === "TEXT")
+    .sort((a, b) => {
+      const aY = a.absoluteBoundingBox?.y || 0;
+      const bY = b.absoluteBoundingBox?.y || 0;
+      return aY - bY;
+    });
+  console.log('Found text layers:', textLayers.map(l => ({ name: l.name, id: l.id })));
+
+  // Build fields array dynamically
+  const fields: {name: string; type: string; description: string}[] = [];
+
+  // Add text fields
+  textLayers.forEach(layer => {
+    fields.push({
+      name: layer.name,
+      type: "text",
+      description: `Current text: "${(layer as TextNode).characters}"`
+    });
+  });
+
+  // Find all image layers (rectangles with fills)
+  const imageLayers = component.findAll(n => 
+    n.type === "RECTANGLE" && 
+    'fills' in n &&
+    Array.isArray(n.fills) &&
+    n.fills.some(fill => fill.type === "IMAGE")
+  ).sort((a, b) => {
+    const aY = a.absoluteBoundingBox?.y || 0;
+    const bY = b.absoluteBoundingBox?.y || 0;
+    return aY - bY;
+  });
+
+  // Add image fields
+  imageLayers.forEach(layer => {
+    fields.push({
+      name: layer.name,
+      type: "image",
+      description: "Image placeholder"
+    });
+  });
+
+  // Add variant property if it's a component set
+  if (node.type === "COMPONENT_SET") {
+    const variantGroupProperties = node.variantGroupProperties || {};
+    
+    const variantOptions = Object.entries(variantGroupProperties)
+      .map(([prop, values]) => `${prop}: ${values.values.join(" | ")}`)
+      .join(", ");
+    
+    fields.push({
+      name: "variant",
+      type: "string",
+      description: `Available variants: ${variantOptions || variants.join(" | ")}`
+    });
   }
+
+  // Check for exact duplicates after all fields are collected
+  const seenNames = new Set<string>();
+  const duplicateNames = new Set<string>();
   
+  fields.forEach(field => {
+    const name = field.name;
+    if (seenNames.has(name)) {
+      duplicateNames.add(name);
+    }
+    seenNames.add(name);
+  });
+
+  console.log('Duplicate detection:', {
+    seenNames: Array.from(seenNames),
+    duplicateNames: Array.from(duplicateNames)
+  });
+
   return {
     key: node.type === "COMPONENT_SET" ? component.key : node.key,
     name: node.name,
     variants: variants,
-    fields: [
-      { 
-        name: "Name", 
-        type: "text",
-        description: "Location name displayed at the top" 
-      },
-      { 
-        name: "Image", 
-        type: "image",
-        description: "Background image URL" 
-      },
-      { 
-        name: "Appearance", 
-        type: "variant",
-        description: "Card color variant (Blue, Green, Yellow, Red)" 
-      },
-      { 
-        name: "Facts", 
-        type: "array",
-        description: "List of facts with text and point values" 
-      }
-    ]
+    fields: fields,
+    hasDuplicates: duplicateNames.size > 0,
+    duplicateFields: Array.from(duplicateNames)
   };
 }
 
@@ -508,4 +597,18 @@ async function resizeImage(arrayBuffer: ArrayBuffer, maxSize: number = 2048): Pr
     const blob = new Blob([arrayBuffer]);
     img.src = URL.createObjectURL(blob);
   });
+}
+
+function findFirstArray(obj: any): any[] | null {
+  if (Array.isArray(obj)) return obj;
+  
+  if (typeof obj === 'object' && obj !== null) {
+    for (const key in obj) {
+      if (Array.isArray(obj[key])) return obj[key];
+      const nested = findFirstArray(obj[key]);
+      if (nested) return nested;
+    }
+  }
+  
+  return null;
 }
