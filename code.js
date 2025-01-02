@@ -1,182 +1,511 @@
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
+"use strict";
+// Remove the export and declare global
+figma.showUI(__html__, { width: 400, height: 580 });
+// Add initial selection check
+function handleSelection(selection) {
+    console.log('Handling selection:', selection);
+    if (selection.length === 0) {
+        console.log('No selection, sending deselect message');
+        figma.ui.postMessage({
+            type: 'component-deselected'
+        });
+        return;
+    }
+    if (selection.length === 1) {
+        const node = selection[0];
+        console.log('Selected node type:', node.type);
+        if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
+            console.log('Valid component selected, analyzing structure...');
+            // Always analyze the component, even if it's the same one
+            const componentInfo = analyzeComponent(node);
+            if (componentInfo) {
+                console.log('Component analysis successful:', componentInfo);
+                figma.ui.postMessage({
+                    type: 'component-selected',
+                    component: componentInfo
+                });
             }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+            else {
+                console.log('Component missing required layers');
+                figma.notify('Selected component is missing required layers', { error: true });
+                figma.ui.postMessage({
+                    type: 'component-deselected'
+                });
+            }
+        }
+        else {
+            console.log('Selected node is not a component');
+            figma.ui.postMessage({
+                type: 'component-deselected'
+            });
+        }
+    }
+    else {
+        console.log('Multiple items selected');
+        figma.ui.postMessage({
+            type: 'component-deselected'
+        });
+    }
+}
+// Set up selection change listener
+figma.on('selectionchange', () => {
+    console.log('Selection changed');
+    handleSelection(figma.currentPage.selection);
+});
+// Listen for document changes
+figma.on('documentchange', ({ documentChanges }) => {
+    console.log('Document changed:', documentChanges);
+    // If we have a component selected, reanalyze after a short delay
+    const selection = figma.currentPage.selection;
+    if (selection.length === 1 && (selection[0].type === "COMPONENT" || selection[0].type === "COMPONENT_SET")) {
+        // Use a short delay to allow for the change to complete
+        setTimeout(() => {
+            console.log('Reanalyzing component after change');
+            handleSelection(selection);
+        }, 100);
+    }
+});
+// Clean up on plugin close
+figma.on('close', () => {
+    // Nothing to clean up anymore
+});
+// Check initial selection when plugin starts
+const initialSelection = figma.currentPage.selection;
+console.log('Initial selection:', initialSelection);
+if (initialSelection.length > 0) {
+    handleSelection(initialSelection);
+}
+else {
+    console.log('No initial selection');
+    figma.notify('Select a component on your artboard');
+    figma.ui.postMessage({
+        type: 'component-deselected'
+    });
+}
+async function processImage(url) {
+    try {
+        console.log('Starting image processing for:', url);
+        // Post message to UI for image processing
+        figma.ui.postMessage({
+            type: 'process-image',
+            url
+        });
+        // Wait for response with timeout
+        const result = await Promise.race([
+            new Promise((resolve) => {
+                figma.ui.once('message', (msg) => {
+                    console.log('Received image processing response:', msg);
+                    if (msg.type === 'image-processed') {
+                        resolve({
+                            success: true,
+                            data: new Uint8Array(msg.data)
+                        });
+                    }
+                    else if (msg.type === 'image-error') {
+                        resolve({
+                            success: false,
+                            error: msg.error
+                        });
+                    }
+                });
+            }),
+            new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log('Image processing timed out');
+                    resolve({
+                        success: false,
+                        error: 'Image loading timed out'
+                    });
+                }, 10000);
+            })
+        ]);
+        if (result.success) {
+            console.log('Image processed successfully');
+        }
+        else {
+            console.warn('Image processing failed:', result.error);
+        }
+        return result;
+    }
+    catch (err) {
+        console.error('Image processing error:', err);
+        return {
+            success: false,
+            error: err instanceof Error ? err.message : 'Unknown error occurred'
+        };
+    }
+}
+// Add these helper functions
+async function loadFontForNode(node) {
+    try {
+        await figma.loadFontAsync(node.fontName);
+        return true;
+    }
+    catch (err) {
+        console.warn(`Failed to load font for node "${node.name}":`, err);
+        return false;
+    }
+}
+function sortFactsByPoints(facts) {
+    return [...facts].sort((a, b) => b.points - a.points);
+}
+async function updateCardInstance(instance, location) {
+    try {
+        // Set the color variant based on the appearance in the JSON
+        const properties = instance.componentProperties;
+        if (properties && "Color" in properties) {
+            instance.setProperties({ Color: location.appearance });
+        }
+        else {
+            console.warn(`Component doesn't have a 'Color' property for ${location.name}, skipping appearance setting`);
+        }
+        // Update name
+        const nameNode = instance.findOne(node => node.type === "TEXT" && node.name === "Name");
+        if (nameNode) {
+            await loadFontForNode(nameNode);
+            nameNode.characters = location.name;
+        }
+        // Update facts
+        const sortedFacts = sortFactsByPoints(location.facts);
+        for (const [index, fact] of sortedFacts.entries()) {
+            const factNum = 3 - index;
+            // Update fact text
+            const factNode = instance.findOne(node => node.type === "TEXT" && node.name === `Fact${factNum}`);
+            if (factNode) {
+                await loadFontForNode(factNode);
+                factNode.characters = fact.text;
+            }
+            // Update points
+            const pointsNode = instance.findOne(node => node.type === "TEXT" && node.name === `Points${factNum}`);
+            if (pointsNode) {
+                await loadFontForNode(pointsNode);
+                pointsNode.characters = fact.points.toString();
+            }
+        }
+        // Update potential points
+        const maxPoints = Math.max(...location.facts.map(fact => fact.points));
+        const potentialPointsNode = instance.findOne(node => node.type === "TEXT" && node.name === "Potential Points");
+        if (potentialPointsNode) {
+            await loadFontForNode(potentialPointsNode);
+            potentialPointsNode.characters = maxPoints.toString();
+        }
+        // Update image with new processing
+        if (location.imageUrl) {
+            const imageNode = instance.findOne(node => node.type === "RECTANGLE" && node.name === "Image");
+            if (imageNode) {
+                const imageResult = await processImage(location.imageUrl);
+                if (imageResult.success && imageResult.data) {
+                    const image = await figma.createImage(imageResult.data);
+                    imageNode.fills = [{
+                            type: 'IMAGE',
+                            imageHash: image.hash,
+                            scaleMode: 'FILL'
+                        }];
+                }
+                else {
+                    console.warn(`Image failed for ${location.name}:`, imageResult.error);
+                    imageNode.fills = [{
+                            type: 'SOLID',
+                            color: { r: 0.9, g: 0.9, b: 0.9 }
+                        }];
+                }
+            }
+        }
+        return true;
+    }
+    catch (err) {
+        console.error('Error in updateCardInstance:', err);
+        return false;
+    }
+}
+// Update the message handler
+figma.ui.onmessage = async (msg) => {
+    if (msg.type === 'select-component') {
+        console.log('Selection mode activated');
+        // Set up the selection change listener
+        const handler = () => {
+            handleSelection(figma.currentPage.selection);
+        };
+        figma.on('selectionchange', handler);
+        figma.once('close', () => figma.off('selectionchange', handler));
+    }
+    if (msg.type === 'get-components') {
+        // Look for component sets that contain our card variants
+        const components = figma.currentPage.findAll(node => {
+            // Only look for component sets
+            if (node.type !== "COMPONENT_SET")
+                return false;
+            // Check if the first variant has all required layers
+            const firstVariant = node.children[0];
+            if (!firstVariant)
+                return false;
+            const hasNameLayer = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Name");
+            const hasImageLayer = !!firstVariant.findOne(n => n.type === "RECTANGLE" && n.name === "Image");
+            const hasFact1 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact1");
+            const hasFact2 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact2");
+            const hasFact3 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact3");
+            // Component must have all required layers
+            return hasNameLayer && hasImageLayer && hasFact1 && hasFact2 && hasFact3;
+        });
+        // Send components list back to UI
+        figma.ui.postMessage({
+            type: 'components-list',
+            components: components.map(component => {
+                var _a;
+                const firstVariant = component.children[0];
+                if (firstVariant.type !== "COMPONENT") {
+                    console.warn("First child is not a component:", firstVariant.type);
+                    return null;
+                }
+                return {
+                    key: ((_a = component.defaultVariant) === null || _a === void 0 ? void 0 : _a.key) || firstVariant.key,
+                    name: component.name
+                };
+            }).filter(Boolean) // Remove any null entries
+        });
+    }
+    if (msg.type === 'hydrate-cards') {
+        try {
+            console.log('Starting card generation with data:', msg.jsonData);
+            const { componentKey, jsonData } = msg;
+            const component = await figma.importComponentByKeyAsync(componentKey);
+            if (!component) {
+                throw new Error('Component not found');
+            }
+            // Create container frame with updated settings
+            const frame = figma.createFrame();
+            frame.name = "Generated Cards";
+            frame.layoutMode = "HORIZONTAL";
+            frame.counterAxisSizingMode = "AUTO";
+            frame.layoutWrap = "WRAP";
+            frame.itemSpacing = 24; // Fixed gap
+            frame.counterAxisSpacing = 24; // Gap between rows
+            frame.horizontalPadding = 32;
+            frame.verticalPadding = 32;
+            frame.fills = [{ type: 'SOLID', color: { r: 0.267, g: 0.267, b: 0.267 } }]; // #444444
+            frame.primaryAxisAlignItems = "MIN"; // Start from left
+            frame.counterAxisAlignItems = "MIN"; // Start from top
+            console.log('Created frame with settings:', {
+                width: frame.width,
+                height: frame.height,
+                layoutMode: frame.layoutMode,
+                wrap: frame.layoutWrap,
+                spacing: frame.itemSpacing
+            });
+            // Parse data and handle different structures
+            const data = JSON.parse(jsonData);
+            let items = [];
+            if (Array.isArray(data)) {
+                items = data;
+            }
+            else if (typeof data === 'object' && data !== null) {
+                const arrayItems = findFirstArray(data);
+                if (arrayItems) {
+                    items = arrayItems;
+                }
+                else {
+                    // If no array found, treat the object itself as a single item
+                    items = [data];
+                }
+            }
+            console.log('Processing', items.length, 'cards');
+            // Create and update cards
+            let successCount = 0;
+            let failCount = 0;
+            for (const item of items) {
+                try {
+                    console.log('Creating card for:', item.name);
+                    const instance = component.createInstance();
+                    frame.appendChild(instance);
+                    // Log frame size after each card
+                    console.log('Frame size after adding card:', {
+                        width: frame.width,
+                        height: frame.height,
+                        children: frame.children.length
+                    });
+                    const success = await updateCardInstance(instance, item);
+                    if (success) {
+                        successCount++;
+                    }
+                    else {
+                        failCount++;
+                        instance.remove();
+                    }
+                }
+                catch (cardError) {
+                    console.error(`Failed to create card for ${item.name}:`, cardError);
+                    failCount++;
+                }
+            }
+            // Adjust frame width to show max 10 cards per row
+            const cardWidth = component.width;
+            const maxCardsPerRow = 10;
+            const maxWidth = (cardWidth * maxCardsPerRow) + (24 * (maxCardsPerRow - 1)) + (32 * 2);
+            frame.resize(Math.min(maxWidth, frame.width), frame.height);
+            console.log('Final frame dimensions:', {
+                width: frame.width,
+                height: frame.height,
+                cards: successCount,
+                failed: failCount
+            });
+            // Show summary and close
+            const message = failCount > 0
+                ? `Created ${successCount} cards. ${failCount} cards failed.`
+                : `Successfully created ${successCount} cards.`;
+            figma.notify(message);
+            setTimeout(() => figma.closePlugin(), 1000);
+        }
+        catch (error) {
+            console.error('Error in card generation:', error);
+            figma.notify(error.message, { error: true });
+            figma.closePlugin();
+        }
     }
 };
-var _this = this;
-figma.showUI(__html__, { width: 450, height: 800 });
-figma.ui.onmessage = function (msg) { return __awaiter(_this, void 0, void 0, function () {
-    var componentKey, jsonData, component, data, collection_1, currentMode_1, _loop_1, _i, _a, location_1, error_1;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                console.log('Received message:', msg); // Log incoming message
-                if (!(msg.type === 'hydrate-cards')) return [3 /*break*/, 8];
-                componentKey = msg.componentKey, jsonData = msg.jsonData;
-                console.log('Component Key:', componentKey);
-                console.log('JSON Data:', jsonData);
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 7, , 8]);
-                // Get the master component
-                console.log('Attempting to import component...');
-                return [4 /*yield*/, figma.importComponentByKeyAsync(componentKey)];
-            case 2:
-                component = _b.sent();
-                console.log('Component import result:', component);
-                if (!component) {
-                    console.error('Component not found');
-                    figma.ui.postMessage({
-                        type: 'error',
-                        message: 'Component not found. Please verify the component key.'
-                    });
-                    return [2 /*return*/];
-                }
-                console.log('Parsing JSON data...');
-                data = JSON.parse(jsonData);
-                console.log('Parsed data:', data);
-                if (!data.locations || !Array.isArray(data.locations)) {
-                    console.error('Invalid JSON structure');
-                    throw new Error('Invalid JSON structure. Expected "locations" array.');
-                }
-                // Create a collection for our variables if it doesn't exist
-                console.log('Getting/creating variable collection...');
-                collection_1 = figma.variables.getLocalVariableCollections()
-                    .find(function (c) { return c.name === 'CardVariables'; });
-                if (!collection_1) {
-                    console.log('Creating new variable collection...');
-                    collection_1 = figma.variables.createVariableCollection('CardVariables');
-                }
-                console.log('Variable collection:', collection_1);
-                if (!collection_1.modes || collection_1.modes.length === 0) {
-                    throw new Error('Variable collection has no modes');
-                }
-                currentMode_1 = collection_1.modes[0].modeId;
-                console.log('Current mode:', currentMode_1);
-                _loop_1 = function (location_1) {
-                    var instance_1, nameVariable, cardError_1;
-                    return __generator(this, function (_c) {
-                        switch (_c.label) {
-                            case 0:
-                                _c.trys.push([0, 2, , 3]);
-                                console.log('Processing location:', location_1.name);
-                                instance_1 = component.createInstance();
-                                // Handle name
-                                console.log('Setting up name variable...');
-                                return [4 /*yield*/, figma.variables.getVariableByNameAsync('cardName')];
-                            case 1:
-                                nameVariable = _c.sent();
-                                if (!nameVariable) {
-                                    console.log('Creating new cardName variable...');
-                                    nameVariable = figma.variables.createVariable('cardName', collection_1, 'STRING');
-                                }
-                                nameVariable.setValueForMode(currentMode_1, location_1.name);
-                                instance_1.setBoundVariable('cardName', nameVariable);
-                                // Handle facts
-                                if (!location_1.facts || !Array.isArray(location_1.facts)) {
-                                    throw new Error("Invalid facts array for location: ".concat(location_1.name));
-                                }
-                                console.log('Processing facts...');
-                                location_1.facts.forEach(function (fact, index) {
-                                    var factNum = index + 1;
-                                    console.log("Processing fact ".concat(factNum, ":"), fact);
-                                    // Create/get variables for fact text
-                                    var factTextVarName = "fact".concat(factNum, "Text");
-                                    var factTextVar = figma.variables.getVariableByNameAsync(factTextVarName);
-                                    if (!factTextVar) {
-                                        factTextVar = figma.variables.createVariable(factTextVarName, collection_1, 'STRING');
-                                    }
-                                    factTextVar.setValueForMode(currentMode_1, fact.text);
-                                    instance_1.setBoundVariable(factTextVarName, factTextVar);
-                                    // Create/get variables for fact points
-                                    var factPointsVarName = "fact".concat(factNum, "Points");
-                                    var factPointsVar = figma.variables.getVariableByNameAsync(factPointsVarName);
-                                    if (!factPointsVar) {
-                                        factPointsVar = figma.variables.createVariable(factPointsVarName, collection_1, 'INTEGER');
-                                    }
-                                    factPointsVar.setValueForMode(currentMode_1, fact.points);
-                                    instance_1.setBoundVariable(factPointsVarName, factPointsVar);
-                                });
-                                // Position the new instance
-                                instance_1.x = instance_1.width * figma.currentPage.children.length;
-                                console.log('Card instance created successfully');
-                                return [3 /*break*/, 3];
-                            case 2:
-                                cardError_1 = _c.sent();
-                                console.error('Error processing card:', cardError_1);
-                                figma.ui.postMessage({
-                                    type: 'error',
-                                    message: "Error processing card \"".concat(location_1.name, "\": ").concat(cardError_1.message)
-                                });
-                                return [3 /*break*/, 3];
-                            case 3: return [2 /*return*/];
-                        }
-                    });
-                };
-                _i = 0, _a = data.locations;
-                _b.label = 3;
-            case 3:
-                if (!(_i < _a.length)) return [3 /*break*/, 6];
-                location_1 = _a[_i];
-                return [5 /*yield**/, _loop_1(location_1)];
-            case 4:
-                _b.sent();
-                _b.label = 5;
-            case 5:
-                _i++;
-                return [3 /*break*/, 3];
-            case 6:
-                console.log('All cards processed successfully');
-                figma.ui.postMessage({
-                    type: 'success',
-                    message: "Successfully created ".concat(data.locations.length, " card instances")
-                });
-                // Close the plugin after a short delay to ensure the success message is shown
-                setTimeout(function () {
-                    console.log('Closing plugin...');
-                    figma.closePlugin();
-                }, 1000);
-                return [3 /*break*/, 8];
-            case 7:
-                error_1 = _b.sent();
-                console.error('Error processing cards:', error_1);
-                figma.ui.postMessage({
-                    type: 'error',
-                    message: error_1.message || 'An unknown error occurred'
-                });
-                return [3 /*break*/, 8];
-            case 8: return [2 /*return*/];
-        }
+function analyzeComponent(node) {
+    console.log('Starting component analysis for:', {
+        id: node.id,
+        name: node.name,
+        type: node.type
     });
-}); };
+    const component = node.type === "COMPONENT_SET" ? node.children[0] : node;
+    if (!component)
+        return null;
+    // Get variant information
+    const variants = node.type === "COMPONENT_SET" ?
+        node.children.map(child => child.name) :
+        [node.name];
+    // Find all text layers and their names, preserving their vertical order
+    const textLayers = component.findAll(n => n.type === "TEXT")
+        .sort((a, b) => {
+        var _a, _b;
+        const aY = ((_a = a.absoluteBoundingBox) === null || _a === void 0 ? void 0 : _a.y) || 0;
+        const bY = ((_b = b.absoluteBoundingBox) === null || _b === void 0 ? void 0 : _b.y) || 0;
+        return aY - bY;
+    });
+    console.log('Found text layers:', textLayers.map(l => ({ name: l.name, id: l.id })));
+    // Build fields array dynamically
+    const fields = [];
+    // Add text fields
+    textLayers.forEach(layer => {
+        fields.push({
+            name: layer.name,
+            type: "text",
+            description: `Current text: "${layer.characters}"`
+        });
+    });
+    // Find all image layers (rectangles with fills)
+    const imageLayers = component.findAll(n => n.type === "RECTANGLE" &&
+        'fills' in n &&
+        Array.isArray(n.fills) &&
+        n.fills.some(fill => fill.type === "IMAGE")).sort((a, b) => {
+        var _a, _b;
+        const aY = ((_a = a.absoluteBoundingBox) === null || _a === void 0 ? void 0 : _a.y) || 0;
+        const bY = ((_b = b.absoluteBoundingBox) === null || _b === void 0 ? void 0 : _b.y) || 0;
+        return aY - bY;
+    });
+    // Add image fields
+    imageLayers.forEach(layer => {
+        fields.push({
+            name: layer.name,
+            type: "image",
+            description: "Image placeholder"
+        });
+    });
+    // Add variant property if it's a component set
+    if (node.type === "COMPONENT_SET") {
+        const variantGroupProperties = node.variantGroupProperties || {};
+        const variantOptions = Object.entries(variantGroupProperties)
+            .map(([prop, values]) => `${prop}: ${values.values.join(" | ")}`)
+            .join(", ");
+        fields.push({
+            name: "variant",
+            type: "string",
+            description: `Available variants: ${variantOptions || variants.join(" | ")}`
+        });
+    }
+    // Check for exact duplicates after all fields are collected
+    const seenNames = new Set();
+    const duplicateNames = new Set();
+    fields.forEach(field => {
+        const name = field.name;
+        if (seenNames.has(name)) {
+            duplicateNames.add(name);
+        }
+        seenNames.add(name);
+    });
+    console.log('Duplicate detection:', {
+        seenNames: Array.from(seenNames),
+        duplicateNames: Array.from(duplicateNames)
+    });
+    return {
+        key: node.type === "COMPONENT_SET" ? component.key : node.key,
+        name: node.name,
+        variants: variants,
+        fields: fields,
+        hasDuplicates: duplicateNames.size > 0,
+        duplicateFields: Array.from(duplicateNames)
+    };
+}
+// Make sure we're listening to selection changes
+figma.on('selectionchange', () => {
+    console.log('Selection changed');
+    handleSelection(figma.currentPage.selection);
+});
+// Add image resizing utility
+async function resizeImage(arrayBuffer, maxSize = 2048) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+            // Calculate new dimensions while maintaining aspect ratio
+            if (width > height && width > maxSize) {
+                height = Math.round((height * maxSize) / width);
+                width = maxSize;
+            }
+            else if (height > maxSize) {
+                width = Math.round((width * maxSize) / height);
+                height = maxSize;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('Failed to get canvas context'));
+                return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            // Convert to blob with reduced quality
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    reject(new Error('Failed to create blob from canvas'));
+                    return;
+                }
+                blob.arrayBuffer().then(buffer => {
+                    resolve(new Uint8Array(buffer));
+                }).catch(err => {
+                    reject(new Error('Failed to convert blob to array buffer'));
+                });
+            }, 'image/jpeg', 0.8);
+        };
+        img.onerror = () => reject(new Error('Failed to load image for resizing'));
+        // Create object URL from array buffer
+        const blob = new Blob([arrayBuffer]);
+        img.src = URL.createObjectURL(blob);
+    });
+}
+function findFirstArray(obj) {
+    if (Array.isArray(obj))
+        return obj;
+    if (typeof obj === 'object' && obj !== null) {
+        for (const key in obj) {
+            if (Array.isArray(obj[key]))
+                return obj[key];
+            const nested = findFirstArray(obj[key]);
+            if (nested)
+                return nested;
+        }
+    }
+    return null;
+}

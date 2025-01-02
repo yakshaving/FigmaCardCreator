@@ -1,7 +1,7 @@
 {
-  "name": "card-crafter",
+  "name": "FigmaCardCrafter",
   "version": "1.0.0",
-  "description": "Your plugin description",
+  "description": "Figma plugin for creating cards",
   "main": "code.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
