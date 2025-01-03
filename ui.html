@@ -35,6 +35,16 @@
           </div>
         </div>
 
+        <div class="array-name-config">
+          <label for="arrayName">Array Name:</label>
+          <input type="text" 
+                 id="arrayName" 
+                 value="items" 
+                 placeholder="e.g., items, cards, data"
+                 onchange="updateJsonStructure()"
+                 onkeyup="updateJsonStructure()">
+        </div>
+
         <div class="component-structure">
           <h3>Component Structure</h3>
           <table class="data-fields">
@@ -385,20 +395,20 @@
     margin-bottom: 24px;
   }
 
-  .data-fields thead {
+  .data-fields thead tr {
     background: #F5F5F5;
   }
 
   .data-fields th {
     text-align: left;
-    padding: 5px;
+    padding: 8px;
     font-weight: 500;
     color: #666666;
     border-bottom: 1px solid var(--figma-color-border);
   }
 
   .data-fields td {
-    padding: 6px;
+    padding: 8px;
     border-bottom: 1px solid var(--figma-color-border);
   }
 
@@ -586,6 +596,43 @@
   .hidden {
     display: none;
   }
+
+  .field-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .array-name-config {
+    margin: 12px 0;
+    padding: 8px;
+    background: var(--figma-color-bg-secondary);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .array-name-config label {
+    font-size: 12px;
+    color: var(--figma-color-text-secondary);
+    font-weight: 500;
+  }
+
+  .array-name-config input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--figma-color-border);
+    border-radius: var(--border-radius-sm);
+    font-size: 12px;
+    background: white;
+  }
+
+  .array-name-config input:focus {
+    border-color: var(--figma-color-bg-brand);
+    outline: none;
+  }
 </style>
 
 <script>
@@ -594,97 +641,134 @@
   let currentStep = 1;
   let selectedComponent = null;
 
-  function updateUI() {
-    console.log('Updating UI, current step:', currentStep);
-    console.log('Selected component:', selectedComponent);
-    
-    // Update selection state UI
-    const selectInstructions = document.getElementById('selectInstructions');
-    const componentDetails = document.getElementById('componentDetails');
-    const warningDiv = document.getElementById('validationWarning');
-    
-    if (selectedComponent) {
-      selectInstructions.classList.add('hidden');
-      componentDetails.classList.remove('hidden');
-      
-      // Check for duplicate field names
-      const duplicates = findDuplicateFields(selectedComponent.fields);
-      const nextButton = document.getElementById('nextStep');
-      
-      if (duplicates.length > 0) {
-        // Show warning
-        const warningDiv = document.getElementById('validationWarning') || createValidationWarning();
-        warningDiv.innerHTML = `
-          <div class="warning-icon">⚠️</div>
-          <div class="warning-message">
-            <span>Found duplicate field names: ${duplicates.join(', ')}.</span><br>
-            Please fix the layer names in your component to proceed.
-          </div>
-        `;
-        warningDiv.classList.remove('hidden');
-        
-        // Disable next button
-        if (nextButton) {
-          nextButton.disabled = true;
-          nextButton.title = 'Please fix duplicate field names to proceed';
+  function canProceedToNextStep() {
+    switch (currentStep) {
+      case 1:
+        return selectedComponent !== null;
+      case 2:
+        const jsonData = document.getElementById('jsonData').value;
+        try {
+          JSON.parse(jsonData);
+          return true;
+        } catch (e) {
+          return false;
         }
-      } else {
-        if (warningDiv) {
-          warningDiv.classList.add('hidden');
-        }
-        if (nextButton) {
-          nextButton.disabled = !canProceedToNextStep();
-          nextButton.title = '';
-        }
-      }
-    } else {
-      selectInstructions.classList.remove('hidden');
-      componentDetails.classList.add('hidden');
-      // Hide warning when no component is selected
-      if (warningDiv) {
-        warningDiv.classList.add('hidden');
-      }
+      case 3:
+        return true;
+      default:
+        return false;
     }
+  }
+
+  function updateStepVisibility() {
+    // Hide all steps first
+    document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+    // Show current step
+    const currentContent = document.querySelector(`.step-content[data-step="${currentStep}"]`);
+    if (currentContent) currentContent.classList.add('active');
     
-    // Mark tabs as visited
+    // Update tabs
     document.querySelectorAll('.tab').forEach(tab => {
       const stepNum = parseInt(tab.dataset.step);
+      tab.classList.toggle('active', stepNum === currentStep);
       if (stepNum <= currentStep) {
         tab.setAttribute('data-visited', 'true');
       }
     });
+    
+    // Update buttons
+    const prevButton = document.getElementById('prevStep');
+    const nextButton = document.getElementById('nextStep');
+    
+    if (prevButton) prevButton.disabled = currentStep === 1;
+    if (nextButton) {
+      nextButton.disabled = !canProceedToNextStep();
+      nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
+    }
   }
 
-  function createValidationWarning() {
-    const warningDiv = document.createElement('div');
-    warningDiv.id = 'validationWarning';
-    warningDiv.className = 'validation-warning hidden';
+  function updateUI() {
+    updateStepVisibility();
     
-    // Insert before the footer
-    const footer = document.querySelector('.footer');
-    footer.parentNode.insertBefore(warningDiv, footer);
+    // Update selection state UI
+    const selectInstructions = document.getElementById('selectInstructions');
+    const componentDetails = document.getElementById('componentDetails');
     
-    return warningDiv;
+    if (selectedComponent) {
+      selectInstructions.classList.add('hidden');
+      componentDetails.classList.remove('hidden');
+    } else {
+      selectInstructions.classList.remove('hidden');
+      componentDetails.classList.add('hidden');
+    }
   }
 
-  function findDuplicateFields(fields) {
-    const seenNames = new Set();
-    const duplicates = new Set();
-
-    fields.forEach(field => {
-      // Use exact name for duplicate checking
-      const name = field.name;
-      if (seenNames.has(name)) {
-        duplicates.add(name);
+  function updateJsonStructure() {
+    if (!selectedComponent) return;
+    
+    const checkedFields = Array.from(document.querySelectorAll('.field-checkbox:checked'))
+      .map(cb => ({
+        name: cb.dataset.field,
+        type: cb.dataset.type,
+        parentFrame: cb.dataset.parent
+      }));
+    
+    // Build the structure based on actual fields
+    const structure = {};
+    const frameGroups = {};
+    
+    // First pass: Group fields by their parent frames
+    checkedFields.forEach(field => {
+      if (field.parentFrame && field.parentFrame.includes('WithPoints')) {
+        // Extract the fact number from the frame name (e.g., "Fact1WithPoints" -> "1")
+        const factNumber = field.parentFrame.match(/Fact(\d+)WithPoints/)[1];
+        if (!frameGroups[factNumber]) {
+          frameGroups[factNumber] = {};
+        }
+        
+        // Determine if this is a fact or points field
+        if (field.name.startsWith('Fact')) {
+          frameGroups[factNumber].text = field.type;
+        } else if (field.name.startsWith('Points')) {
+          frameGroups[factNumber].points = field.type;
+        }
       } else {
-        seenNames.add(name);
+        // Handle standalone fields (Name, Image, etc.)
+        structure[field.name] = field.type;
       }
     });
-
-    return Array.from(duplicates);
+    
+    // Convert frame groups into facts array
+    if (Object.keys(frameGroups).length > 0) {
+      structure.facts = Object.entries(frameGroups)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b)) // Sort by fact number
+        .map(([, value]) => value);
+    }
+    
+    // Get the custom array name or use default
+    const arrayName = document.getElementById('arrayName').value.trim() || 'items';
+    
+    // Create the structure with dynamic key
+    const jsonStructure = {
+      [arrayName]: [structure]
+    };
+    
+    const jsonEl = document.getElementById('jsonStructure');
+    if (jsonEl) {
+      const jsonString = JSON.stringify(jsonStructure, null, 2);
+      const highlightedJson = jsonString.replace(
+        /"([^"]+)":/g, '<span class="json-key">$1</span>:'
+      ).replace(
+        /: "([^"]+)"/g, ': <span class="json-string">$1</span>'
+      ).replace(
+        /: (\d+)/g, ': <span class="json-number">$1</span>'
+      );
+      
+      jsonEl.innerHTML = highlightedJson;
+    }
   }
 
-  // Navigation
+  // Navigation handlers
   document.getElementById('prevStep').onclick = () => {
     if (currentStep > 1) {
       currentStep--;
@@ -693,10 +777,10 @@
   };
 
   document.getElementById('nextStep').onclick = () => {
-    if (currentStep < 3) {
+    if (currentStep < 3 && canProceedToNextStep()) {
       currentStep++;
       updateUI();
-    } else {
+    } else if (currentStep === 3 && canProceedToNextStep()) {
       // Handle generate
       const jsonData = document.getElementById('jsonData').value;
       try {
@@ -714,7 +798,7 @@
     }
   };
 
-  // Single message handler for all plugin messages
+  // Add the message handler
   window.onmessage = async (event) => {
     const msg = event.data.pluginMessage;
     console.log('Received message:', msg);
@@ -751,325 +835,28 @@
         if (tbody && msg.component.fields) {
           tbody.innerHTML = msg.component.fields.map(field => `
             <tr>
+              <td style="text-align: center;">
+                <input type="checkbox" 
+                       class="field-checkbox" 
+                       data-field="${field.name}"
+                       data-type="${field.type}"
+                       data-parent="${field.parentFrame || ''}"
+                       ${field.name === '+' ? '' : 'checked'}
+                       onchange="updateJsonStructure()">
+              </td>
               <td>${field.name}</td>
               <td>${field.type}</td>
-              <td>${field.description || ''}</td>
+              <td>${field.description.replace('Current text: ', '').replace(/^"(.+)"$/, '$1')}</td>
             </tr>
           `).join('');
         }
         
-        // Format JSON with syntax highlighting
-        const jsonStructure = {
-          locations: [{
-            name: "string",
-            imageUrl: "string",
-            appearance: "string (Blue | Green | Yellow | Red)",
-            facts: [{
-              text: "string",
-              points: "number"
-            }]
-          }]
-        };
-        
-        const jsonEl = document.getElementById('jsonStructure');
-        if (jsonEl) {
-          const jsonString = JSON.stringify(jsonStructure, null, 2);
-          const highlightedJson = jsonString.replace(
-            /"([^"]+)":/g, '<span class="json-key">"$1"</span>:'
-          ).replace(
-            /: "([^"]+)"/g, ': <span class="json-string">"$1"</span>'
-          ).replace(
-            /: (\d+)/g, ': <span class="json-number">$1</span>'
-          );
-          
-          jsonEl.innerHTML = highlightedJson;
-        }
-        
+        updateJsonStructure();
         updateUI();
-        break;
-        
-      case 'process-image':
-        try {
-          console.log('Processing image:', msg.url);
-          const response = await fetch(msg.url);
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const blob = await response.blob();
-          const arrayBuffer = await blob.arrayBuffer();
-          
-          // Resize image before sending back
-          const resizedImage = await resizeImage(arrayBuffer);
-          
-          console.log('Image processed and resized successfully');
-          parent.postMessage({ 
-            pluginMessage: {
-              type: 'image-processed',
-              data: Array.from(resizedImage)
-            }
-          }, '*');
-        } catch (error) {
-          console.error('Image processing error:', error);
-          parent.postMessage({
-            pluginMessage: {
-              type: 'image-error',
-              error: error.message
-            }
-          }, '*');
-        }
         break;
     }
   };
 
-  // Copy Template
-  document.getElementById('copyTemplate').onclick = () => {
-    if (!selectedComponent || !selectedComponent.fields) return;
-    
-    // Create a sample template based on actual fields
-    const template = {};
-    selectedComponent.fields.forEach(field => {
-      switch (field.type) {
-        case 'text':
-          template[field.name] = "Sample text";
-          break;
-        case 'image':
-          template[field.name] = "https://example.com/image.jpg";
-          break;
-        case 'variant':
-          template[field.name] = selectedComponent.variants[0] || "default";
-          break;
-        case 'boolean':
-          template[field.name] = false;
-          break;
-        case 'number':
-          template[field.name] = 0;
-          break;
-        default:
-          template[field.name] = null;
-      }
-    });
-
-    const sampleData = [template];
-    const alternativeTemplate = { items: sampleData };
-    
-    const templateText = JSON.stringify({
-      simple: sampleData,
-      withWrapper: alternativeTemplate
-    }, null, 2);
-    
-    // Copy to clipboard
-    const textarea = document.createElement('textarea');
-    textarea.value = templateText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-      document.execCommand('copy');
-      const button = document.getElementById('copyTemplate');
-      button.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M6 8.5L7.5 10L10 6" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-        Copied!
-      `;
-      setTimeout(() => {
-        button.innerHTML = `
-          Copy Template
-        `;
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to copy template:', err);
-    }
-    document.body.removeChild(textarea);
-  };
-
-  // Add JSON validation on input with debounce
-  const jsonInput = document.getElementById('jsonData');
-  let debounceTimer;
-
-  jsonInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      updateUI();
-      if (currentStep === 3) {
-        updateMappingPreview();
-      }
-    }, 300);
-  }, { passive: true });
-
-  // Add this function to generate sample data preview
-  function updateMappingPreview() {
-    if (!selectedComponent) return;
-    
-    const jsonData = document.getElementById('jsonData').value;
-    let sampleData;
-    try {
-      const data = JSON.parse(jsonData);
-      // Handle different data structures
-      if (Array.isArray(data)) {
-        sampleData = data[0];
-      } else if (typeof data === 'object') {
-        const arrayProp = Object.values(data).find(Array.isArray);
-        if (arrayProp) {
-          sampleData = arrayProp[0];
-        } else {
-          sampleData = data;
-        }
-      }
-    } catch (e) {
-      sampleData = {
-        name: "Example Item",
-        imageUrl: "https://example.com/image.jpg",
-        appearance: "Blue",
-        facts: [
-          { text: "Example fact", points: 2 }
-        ]
-      };
-    }
-
-    const tbody = document.getElementById('mappingPreview');
-    tbody.innerHTML = `
-      <tr>
-        <td class="field-name">Name</td>
-        <td class="sample-data">"${sampleData.name}"</td>
-      </tr>
-      <tr>
-        <td class="field-name">Image</td>
-        <td class="sample-data">"${sampleData.imageUrl}"</td>
-      </tr>
-      <tr>
-        <td class="field-name">Appearance</td>
-        <td class="sample-data">"${sampleData.appearance}"</td>
-      </tr>
-      <tr>
-        <td class="field-name">Facts[0].text</td>
-        <td class="sample-data">"${sampleData.facts[0].text}"</td>
-      </tr>
-      <tr>
-        <td class="field-name">Facts[0].points</td>
-        <td class="sample-data">${sampleData.facts[0].points}</td>
-      </tr>
-    `;
-  }
-
   // Initialize
   updateUI();
-
-  // Add passive scroll event listeners
-  document.querySelectorAll('.content, textarea').forEach(el => {
-    el.addEventListener('scroll', () => {}, { passive: true });
-  });
-
-  // Update tab click handlers to be more efficient
-  const tabs = document.querySelectorAll('.tab');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const step = parseInt(tab.dataset.step || '1');
-      if (step <= currentStep) {
-        setCurrentStep(step);
-        updateUI();
-      }
-    }, { passive: true });
-  });
-
-  // Update the setCurrentStep function
-  function setCurrentStep(step) {
-    // Remove active class from all tabs and content
-    tabs.forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.step-content').forEach(c => c.classList.remove('active'));
-    
-    // Add active class to current tab and content
-    const activeTab = document.querySelector(`.tab[data-step="${step}"]`);
-    const activeContent = document.querySelector(`.step-content[data-step="${step}"]`);
-    
-    if (activeTab) activeTab.classList.add('active');
-    if (activeContent) activeContent.classList.add('active');
-    
-    currentStep = step;
-    
-    // Update button states
-    const prevButton = document.getElementById('prevStep');
-    const nextButton = document.getElementById('nextStep');
-    
-    if (prevButton) prevButton.disabled = currentStep === 1;
-    if (nextButton) {
-      nextButton.disabled = !canProceedToNextStep();
-      nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
-    }
-  }
-
-  function updateStepVisibility() {
-    // ... existing code ...
-    if (prevButton) prevButton.disabled = currentStep === 1;
-    if (nextButton) {
-      nextButton.disabled = !canProceedToNextStep();
-      nextButton.textContent = currentStep === 3 ? 'Generate' : 'Next';
-    }
-  }
-
-  // Reuse existing jsonInput and debounceTimer
-  jsonInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      updateUI();
-      if (currentStep === 3) {
-        updateMappingPreview();
-      }
-    }, 300);
-  }, { passive: true });
-
-  // Initialize
-  updateUI();
-
-  // Add this before the message handler
-  async function resizeImage(arrayBuffer, maxSize = 2048) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        
-        // Calculate new dimensions while maintaining aspect ratio
-        if (width > height && width > maxSize) {
-          height = Math.round((height * maxSize) / width);
-          width = maxSize;
-        } else if (height > maxSize) {
-          width = Math.round((width * maxSize) / height);
-          height = maxSize;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert to blob with reduced quality
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error('Failed to create blob from canvas'));
-            return;
-          }
-          
-          blob.arrayBuffer().then(buffer => {
-            resolve(new Uint8Array(buffer));
-          }).catch(() => {
-            reject(new Error('Failed to convert blob to array buffer'));
-          });
-        }, 'image/jpeg', 0.8);
-      };
-      
-      img.onerror = () => reject(new Error('Failed to load image for resizing'));
-      
-      // Create object URL from array buffer
-      const blob = new Blob([arrayBuffer]);
-      img.src = URL.createObjectURL(blob);
-    });
-  }
 </script>

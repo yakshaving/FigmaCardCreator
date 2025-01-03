@@ -269,179 +269,28 @@ async function updateCardInstance(instance: InstanceNode, location: DataItem) {
   }
 }
 
-// Add new message types
+// Types for component analysis
+interface ComponentField {
+  name: string;
+  type: string;
+  description: string;
+  parentFrame?: string;
+}
+
 interface ComponentInfo {
   key: string;
   name: string;
   variants: string[];
-  fields: {
-    name: string;
-    type: string;
-    description: string;
-  }[];
+  fields: ComponentField[];
   hasDuplicates: boolean;
   duplicateFields: string[];
 }
 
-// Update the message handler
-figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'select-component') {
-    console.log('Selection mode activated');
-    
-    // Set up the selection change listener
-    const handler = () => {
-      handleSelection(figma.currentPage.selection);
-    };
-    
-    figma.on('selectionchange', handler);
-    figma.once('close', () => figma.off('selectionchange', handler));
-  }
-  
-  if (msg.type === 'get-components') {
-    // Look for component sets that contain our card variants
-    const components = figma.currentPage.findAll(node => {
-      // Only look for component sets
-      if (node.type !== "COMPONENT_SET") return false;
-
-      // Check if the first variant has all required layers
-      const firstVariant = node.children[0] as ComponentNode;
-      if (!firstVariant) return false;
-
-      const hasNameLayer = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Name");
-      const hasImageLayer = !!firstVariant.findOne(n => n.type === "RECTANGLE" && n.name === "Image");
-      const hasFact1 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact1");
-      const hasFact2 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact2");
-      const hasFact3 = !!firstVariant.findOne(n => n.type === "TEXT" && n.name === "Fact3");
-
-      // Component must have all required layers
-      return hasNameLayer && hasImageLayer && hasFact1 && hasFact2 && hasFact3;
-    }) as ComponentSetNode[];
-
-    // Send components list back to UI
-    figma.ui.postMessage({
-      type: 'components-list',
-      components: components.map(component => {
-        const firstVariant = component.children[0];
-        if (firstVariant.type !== "COMPONENT") {
-          console.warn("First child is not a component:", firstVariant.type);
-          return null;
-        }
-        return {
-          key: component.defaultVariant?.key || firstVariant.key,
-          name: component.name
-        };
-      }).filter(Boolean) // Remove any null entries
-    });
-  }
-  
-  if (msg.type === 'hydrate-cards') {
-    try {
-      console.log('Starting card generation with data:', msg.jsonData);
-      const { componentKey, jsonData } = msg;
-      
-      const component = await figma.importComponentByKeyAsync(componentKey);
-      if (!component) {
-        throw new Error('Component not found');
-      }
-
-      // Create container frame with updated settings
-      const frame = figma.createFrame();
-      frame.name = "Generated Cards";
-      frame.layoutMode = "HORIZONTAL";
-      frame.counterAxisSizingMode = "AUTO";
-      frame.layoutWrap = "WRAP";
-      frame.itemSpacing = 24; // Fixed gap
-      frame.counterAxisSpacing = 24; // Gap between rows
-      frame.horizontalPadding = 32;
-      frame.verticalPadding = 32;
-      frame.fills = [{ type: 'SOLID', color: { r: 0.267, g: 0.267, b: 0.267 } }]; // #444444
-      frame.primaryAxisAlignItems = "MIN"; // Start from left
-      frame.counterAxisAlignItems = "MIN"; // Start from top
-      
-      console.log('Created frame with settings:', {
-        width: frame.width,
-        height: frame.height,
-        layoutMode: frame.layoutMode,
-        wrap: frame.layoutWrap,
-        spacing: frame.itemSpacing
-      });
-
-      // Parse data and handle different structures
-      const data = JSON.parse(jsonData);
-      let items: DataItem[] = [];
-
-      if (Array.isArray(data)) {
-        items = data;
-      } else if (typeof data === 'object' && data !== null) {
-        const arrayItems = findFirstArray(data);
-        if (arrayItems) {
-          items = arrayItems;
-        } else {
-          // If no array found, treat the object itself as a single item
-          items = [data];
-        }
-      }
-
-      console.log('Processing', items.length, 'cards');
-
-      // Create and update cards
-      let successCount = 0;
-      let failCount = 0;
-      for (const item of items) {
-        try {
-          console.log('Creating card for:', item.name);
-          const instance = component.createInstance();
-          frame.appendChild(instance);
-          
-          // Log frame size after each card
-          console.log('Frame size after adding card:', {
-            width: frame.width,
-            height: frame.height,
-            children: frame.children.length
-          });
-
-          const success = await updateCardInstance(instance, item);
-          if (success) {
-            successCount++;
-          } else {
-            failCount++;
-            instance.remove();
-          }
-        } catch (cardError) {
-          console.error(`Failed to create card for ${item.name}:`, cardError);
-          failCount++;
-        }
-      }
-
-      // Adjust frame width to show max 10 cards per row
-      const cardWidth = component.width;
-      const maxCardsPerRow = 10;
-      const maxWidth = (cardWidth * maxCardsPerRow) + (24 * (maxCardsPerRow - 1)) + (32 * 2);
-      frame.resize(Math.min(maxWidth, frame.width), frame.height);
-
-      console.log('Final frame dimensions:', {
-        width: frame.width,
-        height: frame.height,
-        cards: successCount,
-        failed: failCount
-      });
-
-      // Show summary and close
-      const message = failCount > 0 
-        ? `Created ${successCount} cards. ${failCount} cards failed.`
-        : `Successfully created ${successCount} cards.`;
-      figma.notify(message);
-      
-      setTimeout(() => figma.closePlugin(), 1000);
-
-    } catch (error) {
-      console.error('Error in card generation:', error);
-      figma.notify((error as Error).message, { error: true });
-      figma.closePlugin();
-    }
-  }
-};
-
+/**
+ * Analyzes a Figma component or component set to extract its structure and fields
+ * @param node - The component or component set to analyze
+ * @returns ComponentInfo object or null if analysis fails
+ */
 function analyzeComponent(node: ComponentNode | ComponentSetNode): ComponentInfo | null {
   console.log('Starting component analysis for:', {
     id: node.id,
@@ -449,96 +298,143 @@ function analyzeComponent(node: ComponentNode | ComponentSetNode): ComponentInfo
     type: node.type
   });
   
+  // Get the main component (first variant if it's a component set)
   const component = node.type === "COMPONENT_SET" ? node.children[0] as ComponentNode : node;
-  
   if (!component) return null;
 
-  // Get variant information
-  const variants = node.type === "COMPONENT_SET" ? 
-    node.children.map(child => child.name) : 
-    [node.name];
-
-  // Find all text layers and their names, preserving their vertical order
-  const textLayers = component.findAll(n => n.type === "TEXT")
-    .sort((a, b) => {
-      const aY = a.absoluteBoundingBox?.y || 0;
-      const bY = b.absoluteBoundingBox?.y || 0;
-      return aY - bY;
-    });
-  console.log('Found text layers:', textLayers.map(l => ({ name: l.name, id: l.id })));
-
-  // Build fields array dynamically
-  const fields: {name: string; type: string; description: string}[] = [];
-
-  // Add text fields
-  textLayers.forEach(layer => {
-    fields.push({
-      name: layer.name,
-      type: "text",
-      description: `Current text: "${(layer as TextNode).characters}"`
-    });
-  });
-
-  // Find all image layers (rectangles with fills)
-  const imageLayers = component.findAll(n => 
-    n.type === "RECTANGLE" && 
-    'fills' in n &&
-    Array.isArray(n.fills) &&
-    n.fills.some(fill => fill.type === "IMAGE")
-  ).sort((a, b) => {
-    const aY = a.absoluteBoundingBox?.y || 0;
-    const bY = b.absoluteBoundingBox?.y || 0;
-    return aY - bY;
-  });
-
-  // Add image fields
-  imageLayers.forEach(layer => {
-    fields.push({
-      name: layer.name,
-      type: "image",
-      description: "Image placeholder"
-    });
-  });
-
-  // Add variant property if it's a component set
+  // Extract variant information
+  const variants = getVariantInfo(node);
+  
+  // Collect all fields with their hierarchy
+  const fields = collectComponentFields(component);
+  
+  // Add variant property for component sets
   if (node.type === "COMPONENT_SET") {
-    const variantGroupProperties = node.variantGroupProperties || {};
-    
-    const variantOptions = Object.entries(variantGroupProperties)
-      .map(([prop, values]) => `${prop}: ${values.values.join(" | ")}`)
-      .join(", ");
-    
-    fields.push({
-      name: "variant",
-      type: "string",
-      description: `Available variants: ${variantOptions || variants.join(" | ")}`
-    });
+    addVariantField(fields, node, variants);
   }
 
-  // Check for exact duplicates after all fields are collected
-  const seenNames = new Set<string>();
-  const duplicateNames = new Set<string>();
-  
-  fields.forEach(field => {
-    const name = field.name;
-    if (seenNames.has(name)) {
-      duplicateNames.add(name);
-    }
-    seenNames.add(name);
-  });
+  // Check for duplicate field names
+  const { duplicates, hasDuplicates } = findDuplicateFields(fields);
 
-  console.log('Duplicate detection:', {
-    seenNames: Array.from(seenNames),
-    duplicateNames: Array.from(duplicateNames)
+  console.log('Component analysis complete:', {
+    fields: fields,
+    duplicates
   });
 
   return {
     key: node.type === "COMPONENT_SET" ? component.key : node.key,
     name: node.name,
-    variants: variants,
-    fields: fields,
-    hasDuplicates: duplicateNames.size > 0,
-    duplicateFields: Array.from(duplicateNames)
+    variants,
+    fields,
+    hasDuplicates,
+    duplicateFields: duplicates
+  };
+}
+
+/**
+ * Gets variant information from a component or component set
+ */
+function getVariantInfo(node: ComponentNode | ComponentSetNode): string[] {
+  return node.type === "COMPONENT_SET" 
+    ? node.children.map(child => child.name)
+    : [node.name];
+}
+
+/**
+ * Collects all fields from a component, preserving hierarchy
+ */
+function collectComponentFields(component: ComponentNode): ComponentField[] {
+  const fields: ComponentField[] = [];
+
+  /**
+   * Recursively processes a node and its children to extract fields
+   * @param node - The current node to process
+   * @param parentFrame - The name of the parent frame (if any)
+   */
+  function processNode(node: SceneNode, parentFrame?: string) {
+    // Determine if this node is a frame that groups facts with points
+    const isFactFrame = node.type === "FRAME" && node.name.includes("WithPoints");
+    const currentParent = isFactFrame ? node.name : parentFrame;
+
+    // Process text layers
+    if (node.type === "TEXT") {
+      fields.push({
+        name: node.name,
+        type: "text",
+        description: `Current text: "${(node as TextNode).characters}"`,
+        parentFrame: currentParent
+      });
+    } 
+    // Process image layers
+    else if (isImageLayer(node)) {
+      fields.push({
+        name: node.name,
+        type: "image",
+        description: "Image placeholder",
+        parentFrame: currentParent
+      });
+    }
+
+    // Recursively process children
+    if ('children' in node) {
+      node.children.forEach(child => processNode(child, currentParent));
+    }
+  }
+
+  processNode(component);
+  return fields;
+}
+
+/**
+ * Checks if a node is an image layer (rectangle with image fills)
+ */
+function isImageLayer(node: SceneNode): boolean {
+  return node.type === "RECTANGLE" && 
+         'fills' in node && 
+         Array.isArray(node.fills) && 
+         node.fills.some(fill => fill.type === "IMAGE");
+}
+
+/**
+ * Adds variant field information to the fields array
+ */
+function addVariantField(
+  fields: ComponentField[], 
+  node: ComponentSetNode, 
+  variants: string[]
+) {
+  const variantGroupProperties = node.variantGroupProperties || {};
+  const variantOptions = Object.entries(variantGroupProperties)
+    .map(([prop, values]) => `${prop}: ${values.values.join(" | ")}`)
+    .join(", ");
+  
+  fields.push({
+    name: "variant",
+    type: "string",
+    description: `Available variants: ${variantOptions || variants.join(" | ")}`
+  });
+}
+
+/**
+ * Finds duplicate field names in the component
+ */
+function findDuplicateFields(fields: ComponentField[]): {
+  duplicates: string[];
+  hasDuplicates: boolean;
+} {
+  const seenNames = new Set<string>();
+  const duplicateNames = new Set<string>();
+  
+  fields.forEach(field => {
+    if (seenNames.has(field.name)) {
+      duplicateNames.add(field.name);
+    }
+    seenNames.add(field.name);
+  });
+
+  return {
+    duplicates: Array.from(duplicateNames),
+    hasDuplicates: duplicateNames.size > 0
   };
 }
 
